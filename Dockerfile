@@ -59,6 +59,23 @@ RUN chmod +x /etc/my_init.d/*.sh
 COPY ./scripts/docker/custom_udev /etc/init.d/udev
 RUN chmod +x /etc/my_init.d/*.sh
 
+###########################################################
+# A2RM: current MakeMKV, optional Intel QuickSync
+#   MAKEMKV_VERSION   "latest" (looked up on makemkv.com) or a version such as 2.0.0.
+#                     Docker caches this step, so to pick up a new release pass the version
+#                     (scripts/update-makemkv.sh does) or build with --no-cache.
+#   INTEL_QSV=1       Intel media driver + oneVPL runtime from Intel's repository, and HandBrake
+#                     compiled against them (~10 min). See docs/quicksync.md.
+#   HANDBRAKE_VERSION HandBrake version built when INTEL_QSV=1.
+ARG MAKEMKV_VERSION=latest
+ARG INTEL_QSV=0
+ARG HANDBRAKE_VERSION=1.11.2
+COPY ./scripts/docker/image/ /opt/a2rm-build/
+RUN bash /opt/a2rm-build/makemkv.sh "$MAKEMKV_VERSION"
+RUN if [ "$INTEL_QSV" = "1" ]; then bash /opt/a2rm-build/intel_qsv.sh "$HANDBRAKE_VERSION"; fi
+COPY ./scripts/docker/a2rm-check.sh /usr/local/bin/a2rm-check
+RUN chmod +x /usr/local/bin/a2rm-check
+
 
 ###########################################################
 # Final image pushed for use

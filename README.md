@@ -88,12 +88,31 @@ docker exec -u arm -w /opt/arm -e ARM_LOCAL_TZ=$(timedatectl show -p Timezone --
 A2RM is installed like ARM; see ARM's [wiki](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki)
 and [Docker guide](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki/docker) for the
 basics (drives, volumes, permissions). The `Dockerfile` here is ARM's, so building this repo gives you an A2RM image.
-A2RM was developed and is run by layering its files onto the ARM 2.24.4 Docker image; a from-scratch build of this
-repository hasn't been tested yet.
+A from-scratch build of this repository has been tested (builds, starts, tests pass); A2RM itself was developed by
+layering its files onto the ARM 2.24.4 Docker image.
+
+Building the image:
+
+```bash
+docker build -t a2rm:latest .                                # current MakeMKV, CPU encoding
+docker build --build-arg INTEL_QSV=1 -t a2rm:latest .        # plus Intel QuickSync (~10 min longer)
+```
+
+| Build option | What it does |
+|---|---|
+| `MAKEMKV_VERSION` | `latest` (default, looked up on makemkv.com) or a version such as `2.0.0` |
+| `INTEL_QSV=1` | Intel media driver + oneVPL runtime, and HandBrake compiled against them. See [docs/quicksync.md](docs/quicksync.md) |
+| `HANDBRAKE_VERSION` | HandBrake version built with `INTEL_QSV=1` (default 1.11.2) |
 
 Some things to know:
-- **MakeMKV** isn't part of A2RM. ARM's installer downloads it from makemkv.com. The free beta stops working with
-  each new MakeMKV release, so rebuild with the current version when it does (or buy a key).
+- **MakeMKV** isn't part of A2RM; the build downloads it from makemkv.com. The free beta stops working when a newer
+  MakeMKV comes out ("This application version is too old"), so rebuild then (or buy a key):
+  `scripts/update-makemkv.sh a2rm:latest` finds the current version and rebuilds the image (add
+  `--build-arg INTEL_QSV=1` if you use QuickSync), then recreate the container.
+- **Check the setup** any time with `docker exec <container> a2rm-check`: MakeMKV version and whether it has expired,
+  and whether QuickSync really works (a real test encode as ARM's user).
+- **QuickSync:** `scripts/a2rm-host-check.sh` on the host prints the `--device` / `--group-add` lines you need; the full
+  guide is [docs/quicksync.md](docs/quicksync.md).
 - Keep the database, logs and MakeMKV settings on host volumes so a container rebuild doesn't lose them.
 
 ## Tests

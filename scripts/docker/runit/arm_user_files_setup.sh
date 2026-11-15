@@ -52,6 +52,24 @@ fi
 echo "Adding arm user to 'render' group"
 usermod -a -G render arm
 
+# GPU devices keep the HOST's group id inside the container, and that number usually isn't the
+# container's 'render' group (110). Without --privileged (where udev re-owns the devices), the arm
+# user then can't open /dev/dri/renderD128 and QuickSync fails. Add arm to each device's real group.
+for gpu_dev in /dev/dri/renderD* /dev/dri/card*; do
+  [ -e "$gpu_dev" ] || continue
+  dev_gid=$(stat -c "%g" "$gpu_dev")
+  [ "$dev_gid" -eq 0 ] && continue
+  dev_group=$(getent group "$dev_gid" | cut -d: -f1 || true)
+  if [ -z "$dev_group" ]; then
+    dev_group="hostgpu$dev_gid"
+    groupadd -g "$dev_gid" "$dev_group"
+  fi
+  if ! id -nG arm | tr ' ' '\n' | grep -qx "$dev_group"; then
+    echo "Adding arm user to group $dev_group ($dev_gid) for $gpu_dev"
+    usermod -a -G "$dev_group" arm
+  fi
+done
+
 ### Setup Files
 chown -R arm:arm /opt/arm
 
