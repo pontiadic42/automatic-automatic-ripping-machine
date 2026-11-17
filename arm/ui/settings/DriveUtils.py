@@ -10,6 +10,7 @@ Ripper Utils
 
 import dataclasses
 import logging
+import os
 import re
 import pyudev
 
@@ -172,6 +173,11 @@ class DriveInformationMedium(DriveInformationExtended, metaclass=MaskSerialMeta)
         self.media_bd = self._convert_bool(self.media_bd)
 
 
+def drive_node_usable(devnode):
+    """The drive's device node exists in this container and ARM can read it (nothing is opened)"""
+    return os.path.exists(devnode) and os.access(devnode, os.R_OK)
+
+
 def drives_search():
     """
     Search the system for optical drives and yield DriveInformationMedium objects.
@@ -205,6 +211,13 @@ def drives_search():
                 device.properties.get("ID_CDROM") == "1" or
                 re.match(r"^/dev/sr\d+$", devnode)
             )
+
+            if is_optical and not drive_node_usable(devnode):
+                # udev lists the host's drives (from /sys) even when none was passed into the
+                # container, which showed "phantom" empty drive bays
+                logging.info("Optical drive %s is on the host but not passed into the container "
+                             "(no usable device node); ignoring it", devnode)
+                continue
 
             if is_optical:
                 logging.info("Optical drive detected: %s", devnode)
