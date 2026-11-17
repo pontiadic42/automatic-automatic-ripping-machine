@@ -143,6 +143,38 @@ class TestSeries(unittest.TestCase):
         self.assertEqual(roles(decisions), {0: ("playall", False), 1: ("episode", True), 2: ("episode", True),
                                             3: ("episode", True), 4: ("extra", True)})
 
+    def test_dvd_cell_numbers_restart_doctor_who_job_43(self):
+        """DVD segment numbers restart in each title: only the title the others add up to is a play-all"""
+        def hms(h, m, s):
+            return h * 3600 + m * 60 + s
+        disc = [Title(0, hms(1, 16, 43), segments=tuple(range(1, 13)), source="02.VOB"),
+                Title(1, hms(0, 47, 7), segments=tuple(range(1, 9)), source="03.VOB"),
+                Title(2, hms(0, 46, 34), segments=tuple(range(1, 9)), source="04.VOB"),
+                Title(3, hms(0, 48, 7), segments=tuple(range(1, 9)), source="05.VOB"),
+                Title(4, hms(3, 38, 31), segments=tuple(range(1, 37)), source="01.VOB")]
+        with settings():
+            decisions = titles.analyze_series(disc)
+        self.assertEqual(roles(decisions), {0: ("episode", True), 1: ("episode", True), 2: ("episode", True),
+                                            3: ("episode", True), 4: ("playall", False)})
+
+    def test_longer_title_that_isnt_a_sum_is_an_episode(self):
+        disc = [Title(0, 90 * MIN), Title(1, 45 * MIN + 30), Title(2, 30 * MIN), Title(3, 25 * MIN)]
+        with settings():
+            decisions = titles.analyze_series(disc)
+        self.assertEqual({tid: role for tid, (role, _) in roles(decisions).items()},
+                         {0: "episode", 1: "episode", 2: "episode", 3: "episode"})
+
+    def test_bluray_needs_the_clips_as_well_as_the_lengths(self):
+        disc = [Title(0, 88 * MIN, segments=(10, 11), source="00800.mpls"),     # a double episode, own clips
+                Title(1, 44 * MIN, segments=(1,), source="00801.mpls"),
+                Title(2, 44 * MIN, segments=(2,), source="00802.mpls"),
+                Title(3, 132 * MIN, segments=(1, 2, 3), source="00803.mpls"),   # play all of 1, 2, 4
+                Title(4, 44 * MIN, segments=(3,), source="00804.mpls")]
+        with settings():
+            decisions = titles.analyze_series(disc)
+        self.assertEqual(roles(decisions)[0][0], "episode")
+        self.assertEqual(roles(decisions)[3][0], "playall")
+
 
 class TestPlan(unittest.TestCase):
 

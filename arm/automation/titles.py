@@ -293,6 +293,45 @@ def analyze_movie(titles, preferred, tmdb_runtime, rip_extras=True):
     return decisions, ambiguous
 
 
+PLAYALL_TOLERANCE = 0.025
+
+
+def _is_bluray(title):
+    return str(title.source or "").lower().endswith(".mpls")
+
+
+def _sums_up(title, others):
+    """True when 2+ of the other titles' lengths add up to this title's length (within ~2.5%)"""
+    tolerance = max(10, PLAYALL_TOLERANCE * title.seconds)
+    # reachable[total] = how many titles were used to get there (capped at 2)
+    reachable = {0: 0}
+    for other in others:
+        for total, count in list(reachable.items()):
+            new_total = total + other.seconds
+            if new_total > title.seconds + tolerance:
+                continue
+            new_count = min(count + 1, 2)
+            if reachable.get(new_total, -1) < new_count:
+                reachable[new_total] = new_count
+    return any(count >= 2 and abs(total - title.seconds) <= tolerance for total, count in reachable.items())
+
+
+def _is_play_all(title, remaining):
+    """
+    A play-all title is built from 2+ other titles: their lengths must add up to its length.
+    On DVDs MakeMKV's segment numbers are cell numbers inside each title (they restart at 1),
+    so they can't show that one title contains another; only Blu-ray segments (clip files) can,
+    and there they're used as extra evidence.
+    """
+    others = [t for t in remaining if t is not title and t.seconds < title.seconds]
+    if len(others) < 2 or not _sums_up(title, others):
+        return False
+    if _is_bluray(title) and title.segments and any(t.segments for t in others):
+        covered = [t for t in others if t.segments and set(t.segments) <= set(title.segments)]
+        return len(covered) >= 2
+    return True
+
+
 def analyze_series(titles):
     """TV discs: episodes in disc order, minus play-all titles and copies"""
     decisions = {}
@@ -300,10 +339,7 @@ def analyze_series(titles):
     skip_dupes = settings.get("SKIP_DUPLICATE_TITLES")
     episodes = []
     for title in remaining:
-        others = [t for t in remaining if t is not title and t.seconds < title.seconds]
-        covered = [t for t in others if t.segments and set(t.segments) <= set(title.segments)]
-        sums_up = len(others) >= 2 and abs(sum(t.seconds for t in others) - title.seconds) <= 0.05 * title.seconds
-        if len(covered) >= 2 or (not title.segments and sums_up):
+        if _is_play_all(title, remaining):
             decisions[title.tid] = _decision(title, "playall", not skip_dupes, "Play all",
                                              "Plays several other titles back to back")
         else:
