@@ -20,6 +20,14 @@
 					<span class="input-group-text" id="basic-addon1">Year</span>
 				</div>
 				<input type="text" class="form-control" name="year" value="{{job.year}}" aria-label="year" aria-describedby="basic-addon1">
+				<div class="input-group-prepend">
+					<span class="input-group-text" id="searchtype">Type</span>
+				</div>
+				<select class="form-control" name="type" aria-label="Search for" aria-describedby="searchtype">
+					{% for value, label in search_types.items() %}
+						<option value="{{ value }}" {{ 'selected' if value == media_type }}>{{ label }}</option>
+					{% endfor %}
+				</select>
 			</div>
 			<input class="form-control" name="save" value="save" hidden>
 			<input class="form-control" name="job_id" value="{{ job.job_id }}" hidden>

@@ -203,6 +203,7 @@ def identify_dvd(job):
     # Some older DVDs aren't actually labelled
     if not job.label or job.label == "":
         job.label = "not identified"
+    disc_db = None
     try:
         crc64 = pydvdid.compute(str(job.mountpoint))
         logging.info(f"DVD CRC64 hash is: {crc64}")
@@ -230,6 +231,7 @@ def identify_dvd(job):
                 'hasnicetitle': True
             }
             utils.database_updater(args, job)
+            disc_db = args
     except Exception as error:
         logging.error(f"Pydvdid failed with the error: {error}")
 
@@ -259,6 +261,7 @@ def identify_dvd(job):
             identify_loop(job, dvd_info_xml, dvd_title, year)
         except Exception:
             logging.debug("Cant connect to online service!")
+        _keep_disc_db_match(job, disc_db)
     # Failsafe so that we always have a title.
     if job.title is None or job.title == "None":
         job.title = str(job.label)
@@ -274,6 +277,29 @@ def identify_dvd(job):
                 raise utils.RipperException("Track 99 found and PREVENT_99 is enabled")
 
     return True
+
+
+def _keep_disc_db_match(job, disc_db):
+    """
+    The label search runs after a disc-database (CRC64) match and replaces it when it finds
+    something, because database entries can be wrong. But the search shortens the label word by
+    word and only looks at movies, so it can also replace a right answer with a wrong one
+    (DR_WHO_COMPLETE_SERIES_2018_D23: the database said Doctor Who, the TV show; "DR WHO" + 2005
+    found the film King Kong Escapes). Keep the database match unless the search result matches
+    the label better.
+    """
+    if not disc_db or job.title == disc_db["title"]:
+        return
+    from arm.automation import confidence
+    database_score = confidence.similarity(job.label, disc_db["title"])
+    search_score = confidence.similarity(job.label, job.title)
+    if search_score > database_score:
+        logging.info(f"Label search result '{job.title}' matches the label better than the disc database's "
+                     f"'{disc_db['title']}'; using it")
+        return
+    logging.info(f"Keeping the disc database's '{disc_db['title']}' ({disc_db['video_type']}): the label search "
+                 f"found '{job.title}', which matches the label less well")
+    utils.database_updater(disc_db, job)
 
 
 def search_title(title):

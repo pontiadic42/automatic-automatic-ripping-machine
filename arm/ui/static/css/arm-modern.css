@@ -299,3 +299,4 @@ html .bg-light, html[data-theme="dark"] .bg-light { background: var(--arm-surfac
 @media (max-width: 720px) {
     .arm-auto-row { grid-template-columns: 1fr; gap: 8px; }
 }
+.arm-btn.arm-btn-small { padding: 1px 8px; font-size: 12px; margin-left: 6px; }

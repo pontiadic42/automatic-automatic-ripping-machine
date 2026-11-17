@@ -92,7 +92,7 @@ class TestAssess(TempStore):
             for key, value in args.items():
                 setattr(target, key, value)
 
-        with patch.object(confidence, "main_title_seconds", return_value=169 * 60), \
+        with patch.object(confidence, "title_lengths", return_value=[169 * 60]), \
                 patch.object(confidence.tmdb, "runtime_minutes", side_effect=runtimes.get), \
                 patch.object(confidence.tmdb, "search_movies", return_value=[candidate]), \
                 patch.object(confidence, "prior_rip", return_value=None), \
@@ -115,7 +115,7 @@ class TestAssess(TempStore):
             for key, value in args.items():
                 setattr(target, key, value)
 
-        with patch.object(confidence, "main_title_seconds", return_value=10152), \
+        with patch.object(confidence, "title_lengths", return_value=[10152]), \
                 patch.object(confidence.tmdb, "runtime_minutes", return_value=169), \
                 patch.object(confidence, "earlier_identity", return_value=earlier), \
                 patch.object(confidence, "prior_rip", side_effect=lambda j: "same" if j.title == "It Chapter Two"

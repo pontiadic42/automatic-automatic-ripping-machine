@@ -16,22 +16,34 @@ GENERIC_LABELS = {"", "none", "not identified", "dvd", "dvd video", "dvdvideo", 
 NOISE_WORDS = {"dvd", "bd", "bluray", "ws", "fs", "widescreen", "fullscreen", "ntsc", "pal", "16x9", "4x3",
                "r1", "r2", "r4", "us", "uk", "eu", "disc", "disk", "d1", "d2", "side", "a", "b"}
 DISC_MARKERS = re.compile(r"\b(d|disc|disk|side)\s*\d+\b", re.IGNORECASE)
+# Box-set words: DR_WHO_COMPLETE_SERIES_2018_D23, FRIENDS_SEASON_3_DISC_2, OFFICE_S02_D1
+TV_MARKERS = re.compile(r"\b(the\s+)?complete(\s+(series|season|seasons|collection))?\b|\b(season|series|vol|volume)"
+                        r"\s*\d+\b|\bs\d{1,2}(\s*d\d{1,2})?\b|\b(19|20)\d{2}\b|\b(box\s*set|collection)\b",
+                        re.IGNORECASE)
+TV_HINT = re.compile(r"\bcomplete\s+(series|season|seasons)\b|\b(season|series)\s*\d+\b|\bs\d{1,2}\s*d\d{1,2}\b|"
+                     r"\bs\d{1,2}\b|\btv\s+series\b|\bepisodes?\b", re.IGNORECASE)
+ABBREVIATIONS = {"dr": "doctor", "mr": "mister", "mrs": "missus", "st": "saint"}
 
 
 def clean_label(label):
-    """DONT_BREATHE_WS_D1 -> 'dont breathe'"""
+    """DONT_BREATHE_WS_D1 -> 'dont breathe'; DR_WHO_COMPLETE_SERIES_2018_D23 -> 'dr who'"""
     text = str(label or "").replace("_", " ").replace(".", " ").strip().lower()
     if text in GENERIC_LABELS:
         return ""
-    text = DISC_MARKERS.sub(" ", text)
+    text = TV_MARKERS.sub(" ", DISC_MARKERS.sub(" ", text))
     words = [word for word in re.split(r"[^a-z0-9']+", text) if word and word not in NOISE_WORDS]
     return " ".join(words)
 
 
+def looks_like_tv(label):
+    """The label says it's a TV box set or season disc"""
+    return bool(TV_HINT.search(str(label or "").replace("_", " ").replace(".", " ")))
+
+
 def normalize_title(title):
-    text = re.sub(r"[^a-z0-9 ]+", " ", str(title or "").lower().replace("'", ""))
-    text = re.sub(r"^(the|a|an) ", "", re.sub(r"\s+", " ", text).strip())
-    return text
+    text = re.sub(r"[^a-z0-9 ]+", " ", str(title or "").lower().replace("'", "").replace("&", " and "))
+    words = [ABBREVIATIONS.get(word, word) for word in re.sub(r"\s+", " ", text).strip().split(" ")]
+    return re.sub(r"^(the|a|an) ", "", " ".join(words))
 
 
 def similarity(label, title):
@@ -48,15 +60,18 @@ def similarity(label, title):
     return round(max(ratio, overlap * 0.9), 3)
 
 
-def score(identified, label_usable, label_sim, runtime_diff, prior):
+def score(identified, label_usable, label_sim, runtime_diff, prior, series=False):
     """
     :param identified: ARM found a title (hasnicetitle)
     :param label_usable: the label had real words in it
     :param label_sim: 0..1 label vs title
     :param runtime_diff: minutes between the main title and TMDb's runtime, or None
+                         (TV shows: the title closest to TMDb's episode runtime)
     :param prior: "same" (earlier rip of this disc had this title), "different", or None
+    :param series: it's a TV show (the reasons talk about episodes)
     :return: (score, reasons)
     """
+    what = "An episode-length title" if series else "The main title"
     reasons = []
     if not identified:
         return 5, ["ARM couldn't find a title for this disc"]
@@ -80,16 +95,17 @@ def score(identified, label_usable, label_sim, runtime_diff, prior):
         reasons.append("No runtime to compare")
     elif runtime_diff <= 3:
         points += 35
-        reasons.append("The main title's length matches TMDb's runtime")
+        reasons.append(f"{what}'s length matches TMDb's " + ("episode runtime" if series else "runtime"))
     elif runtime_diff <= 8:
         points += 15
-        reasons.append(f"The main title is {runtime_diff:.0f} min off TMDb's runtime")
+        reasons.append(f"{what} is {runtime_diff:.0f} min off TMDb's runtime")
     elif runtime_diff <= 20:
         points -= 10
-        reasons.append(f"The main title is {runtime_diff:.0f} min off TMDb's runtime (maybe another cut)")
+        reasons.append(f"{what} is {runtime_diff:.0f} min off TMDb's runtime"
+                       + ("" if series else " (maybe another cut)"))
     else:
         points -= 30
-        reasons.append(f"The main title is {runtime_diff:.0f} min off TMDb's runtime")
+        reasons.append(f"{what} is {runtime_diff:.0f} min off TMDb's runtime")
 
     if prior == "same":
         points += 25
@@ -108,13 +124,18 @@ def level(value):
     return "medium"
 
 
-def main_title_seconds(job):
-    """Length of the longest title, before ripping (DVD via lsdvd; Blu-ray later from MakeMKV)"""
+def title_lengths(job):
+    """Lengths (seconds) of the disc's titles before ripping (DVD via lsdvd; Blu-ray only later, from MakeMKV)"""
     if job.disctype != "dvd":
-        return None
+        return []
     from arm.ripper import identify
     tracks = identify.lsdvd_tracks(job.devpath) or []
-    lengths = [float(track.get("length") or 0) for track in tracks]
+    return [float(track.get("length") or 0) for track in tracks]
+
+
+def main_title_seconds(job):
+    """Length of the longest title, before ripping"""
+    lengths = title_lengths(job)
     return max(lengths) if lengths else None
 
 
@@ -153,13 +174,21 @@ def adopt(job, title, year, imdb_id, poster_url, video_type):
     }, job)
 
 
-def evaluate(job, main_seconds):
-    """Score the job's current title"""
-    runtime = tmdb.runtime_minutes(job.imdb_id) if main_seconds else None
-    diff = abs(main_seconds / 60 - runtime) if (main_seconds and runtime) else None
+def evaluate(job, main_seconds, lengths=None):
+    """
+    Score the job's current title. TV shows are compared by episode: the disc title closest to
+    TMDb's episode runtime (the longest title on a TV disc is usually a "play all").
+    """
+    runtime = tmdb.runtime_minutes(job.imdb_id) if (main_seconds or lengths) else None
+    series = job.video_type == "series"
+    diff = None
+    if runtime and series and lengths:
+        diff = min(abs(seconds / 60 - runtime) for seconds in lengths if seconds)
+    elif runtime and main_seconds:
+        diff = abs(main_seconds / 60 - runtime)
     label = clean_label(job.label)
     value, reasons = score(bool(job.hasnicetitle) and normalize_title(job.title) not in ("", "none", "not identified"),
-                           bool(label), similarity(job.label, job.title), diff, prior_rip(job))
+                           bool(label), similarity(job.label, job.title), diff, prior_rip(job), series=series)
     return {"score": value, "reasons": reasons, "main_minutes": round(main_seconds / 60, 1) if main_seconds else None,
             "tmdb_runtime": runtime}
 
@@ -177,9 +206,83 @@ def runtime_candidate(job, main_seconds):
     return matches[0]
 
 
+def tv_candidate(job):
+    """For a label that says it's a TV box set or season: the TV show whose name matches it"""
+    query = clean_label(job.label)
+    if not query or not looks_like_tv(job.label):
+        return None
+    shows = [show for show in tmdb.search_tv(query) if similarity(job.label, show["title"]) >= 0.85]
+    shows.sort(key=lambda show: (-similarity(job.label, show["title"]), -show["popularity"]))
+    return shows[0] if shows else None
+
+
+def best_alternative(job):
+    """
+    A likely title to offer the user when the score stays low: TV shows first for TV-looking
+    labels, otherwise the best label match among movies and TV shows.
+    """
+    query = clean_label(job.label)
+    if not query:
+        return None
+    candidates = tmdb.search_tv(query) if looks_like_tv(job.label) else []
+    if not candidates:
+        candidates = [dict(movie, video_type="movie") for movie in tmdb.search_movies(query, limit=5)]
+        candidates += tmdb.search_tv(query, limit=3)
+    candidates = [c for c in candidates if similarity(job.label, c["title"]) >= 0.6
+                  and normalize_title(c["title"]) != normalize_title(job.title)]
+    if not candidates:
+        return None
+    best = max(candidates, key=lambda c: (similarity(job.label, c["title"]), c["popularity"]))
+    return {key: best.get(key) for key in ("title", "year", "imdb_id", "poster_url", "video_type")}
+
+
+def _try(job, result, candidate, video_type, reason, main_seconds, lengths):
+    """Adopt a candidate title; keep it only if it scores better"""
+    before = (job.title, job.year, job.imdb_id, job.poster_url, job.video_type)
+    adopt(job, candidate["title"], candidate["year"], candidate["imdb_id"], candidate["poster_url"], video_type)
+    retry = evaluate(job, main_seconds, lengths)
+    if retry["score"] <= result["score"]:
+        adopt(job, *before)
+        return result
+    retry["reasons"].insert(0, reason)
+    return retry
+
+
+def _improve(job, result, main_seconds, lengths):
+    """A weak identification: try an earlier rip of the same disc, a TV show match, a runtime match"""
+    low = settings.get("CONFIDENCE_NOTIFY_BELOW")
+    if result["score"] < low:
+        # The same disc was ripped and identified before: use that title
+        other = earlier_identity(job)
+        if other is not None and normalize_title(other.title_manual or other.title) != normalize_title(job.title):
+            title = other.title_manual or other.title
+            logging.info(f"Same disc as job {other.job_id}, which was ripped as '{title}'; using that title")
+            adopt(job, title, other.year, other.imdb_id, other.poster_url, other.video_type)
+            retry = evaluate(job, main_seconds, lengths)
+            retry["reasons"].insert(0, f"Same disc as job {other.job_id}, which was ripped as {title}")
+            result = retry
+    if result["score"] < low:
+        show = tv_candidate(job)
+        if show and (normalize_title(show["title"]) != normalize_title(job.title) or job.video_type != "series"):
+            logging.info(f"The label looks like a TV set: trying the TV show '{show['title']} ({show['year']})'")
+            result = _try(job, result, show, "series", f"The label looks like a TV show: {show['title']}",
+                          main_seconds, lengths)
+    if result["score"] < low and settings.get("RUNTIME_MATCHING") and not looks_like_tv(job.label):
+        candidate = runtime_candidate(job, main_seconds)
+        if candidate and normalize_title(candidate["title"]) != normalize_title(job.title):
+            previous = job.title
+            logging.info(f"Runtime match: '{candidate['title']} ({candidate['year']})' has a "
+                         f"{candidate['runtime']} min runtime like the main title; was '{job.title}'")
+            adopt(job, candidate["title"], candidate["year"], candidate["imdb_id"], candidate["poster_url"], "movie")
+            retry = evaluate(job, main_seconds, lengths)
+            retry["reasons"].insert(0, f"Picked by runtime instead of '{previous}'")
+            result = retry
+    return result
+
+
 def assess(job):
     """
-    Score the identification, try a runtime match when it's weak, save the result and
+    Score the identification, try better matches when it's weak, save the result and
     return it. Values the user set in the UI are never replaced.
     """
     if not settings.get("CONFIDENCE_ENABLED") or job.disctype not in ("dvd", "bluray"):
@@ -189,38 +292,29 @@ def assess(job):
         store.update_job(job.job_id, confidence=result)
         return result
     try:
-        main_seconds = main_title_seconds(job)
+        lengths = title_lengths(job)
     except Exception as error:  # noqa: BLE001
         logging.info(f"Couldn't read the title lengths: {error}")
-        main_seconds = None
-    result = evaluate(job, main_seconds)
-
-    if result["score"] < settings.get("CONFIDENCE_NOTIFY_BELOW"):
-        # The same disc was ripped and identified before: use that title
-        other = earlier_identity(job)
-        if other is not None and normalize_title(other.title_manual or other.title) != normalize_title(job.title):
-            title = other.title_manual or other.title
-            logging.info(f"Same disc as job {other.job_id}, which was ripped as '{title}'; using that title")
-            adopt(job, title, other.year, other.imdb_id, other.poster_url, other.video_type)
-            retry = evaluate(job, main_seconds)
-            retry["reasons"].insert(0, f"Same disc as job {other.job_id}, which was ripped as {title}")
-            result = retry
-
-    if result["score"] < settings.get("CONFIDENCE_NOTIFY_BELOW") and settings.get("RUNTIME_MATCHING"):
-        candidate = runtime_candidate(job, main_seconds)
-        if candidate and normalize_title(candidate["title"]) != normalize_title(job.title):
-            previous = (job.title, job.year)
-            logging.info(f"Runtime match: '{candidate['title']} ({candidate['year']})' has a "
-                         f"{candidate['runtime']} min runtime like the main title; was '{job.title}'")
-            adopt(job, candidate["title"], candidate["year"], candidate["imdb_id"], candidate["poster_url"], "movie")
-            retry = evaluate(job, main_seconds)
-            retry["reasons"].insert(0, f"Picked by runtime instead of '{previous[0]}'")
-            result = retry
+        lengths = []
+    main_seconds = max(lengths) if lengths else None
+    result = _improve(job, evaluate(job, main_seconds, lengths), main_seconds, lengths)
     result["level"] = level(result["score"])
+    if result["level"] == "low":
+        suggestion = best_alternative(job)
+        if suggestion:
+            result["suggestion"] = suggestion
     store.update_job(job.job_id, confidence=result)
     logging.info(f"Identification confidence {result['score']}/100 ({result['level']}): "
-                 + "; ".join(result["reasons"]))
+                 + "; ".join(result["reasons"])
+                 + (f". Suggesting {result['suggestion']['title']}" if result.get("suggestion") else ""))
     return result
+
+
+def suggestion_name(suggestion):
+    """Doctor Who (TV show, 2005)"""
+    parts = ("TV show" if suggestion.get("video_type") == "series" else "", suggestion.get("year") or "")
+    details = ", ".join(part for part in parts if part)
+    return suggestion["title"] + (f" ({details})" if details else "")
 
 
 def ask_user(job, result, wait_seconds):
@@ -241,6 +335,11 @@ def ask_user(job, result, wait_seconds):
         body = (f"{result['score']}/100 sure. " + "; ".join(result["reasons"][:3]) +
                 f". ARM rips with this title in {minutes} min unless you change it.")
         actions = [notify.http("Yes, that's it", notify.action_url(job.job_id, "confirm")), pick]
+    suggestion = result.get("suggestion")
+    if suggestion:
+        name = suggestion_name(suggestion)
+        body += f" Maybe it's {name}?"
+        actions.insert(len(actions) - 1, notify.http(f"Use {name}"[:40], notify.action_url(job.job_id, "suggest")))
     notify.in_app(title, body)
     notify.send(title, body, priority="high", tags=["dvd", "question"], click=notify.job_link(job.job_id),
                 icon=job.poster_url, actions=actions)

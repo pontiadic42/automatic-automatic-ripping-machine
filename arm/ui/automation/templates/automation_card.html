@@ -7,6 +7,9 @@
             <span>{{ item.message }}</span>
             <span class="arm-attn-actions">
                 {% if item.kind == "confidence" %}
+                    {% if automation.confidence and automation.confidence.suggestion %}{% set s = automation.confidence.suggestion %}
+                        <button type="button" class="arm-btn" data-card-action="use_suggestion">Use {{ s.title }}{% if s.year %} ({{ s.year }}){% endif %}{% if s.video_type == "series" %}, TV show{% endif %}</button>
+                    {% endif %}
                     {% if title_known %}<button type="button" class="arm-btn" data-card-action="accept">Accept title</button>{% endif %}
                     <a class="arm-btn" href="titlesearch?job_id={{ jobs.job_id }}">Pick another</a>
                     {% if not finished %}
@@ -38,7 +41,8 @@
                 method: "POST", credentials: "same-origin",
                 headers: token ? {"X-CSRFToken": token.content} : {},
                 body: new URLSearchParams({job: "{{ jobs.job_id }}", action: action, kind: button.dataset.kind || "",
-                                           file: button.dataset.file || ""})
+                                           file: button.dataset.file || "",
+                                           type: button.dataset.type || ""})
             }).then(function (r) { return r.json(); }).then(function (data) {
                 if (!data.success) { alert(data.message || "Something went wrong"); }
                 window.location.reload();
@@ -62,6 +66,14 @@
                 <ul class="arm-auto-reasons">
                     {% for reason in c.reasons %}<li>{{ reason }}</li>{% endfor %}
                 </ul>
+                {% if jobs.video_type in ["movie", "series"] %}
+                    <p class="arm-faint" style="font-size:12px; margin:0 0 4px">
+                        {{ "TV show" if jobs.video_type == "series" else "Movie" }}
+                        <button type="button" class="arm-btn arm-btn-small" data-card-action="set_type"
+                                data-type="{{ "movie" if jobs.video_type == "series" else "series" }}">
+                            {{ "It's a movie" if jobs.video_type == "series" else "It's a TV show" }}</button>
+                    </p>
+                {% endif %}
                 {% if c.main_minutes or c.tmdb_runtime %}
                     <p class="arm-faint" style="font-size:12px; margin:0">
                         {% if c.main_minutes %}Main title {{ c.main_minutes }} min{% endif %}

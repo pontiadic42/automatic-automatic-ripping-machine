@@ -96,3 +96,25 @@ def search_movies(query, limit=8):
             "popularity": item.get("popularity") or 0,
         })
     return results
+
+
+@functools.lru_cache(maxsize=64)
+def tv_imdb_id(tmdb_id):
+    return (_get(f"/tv/{int(tmdb_id)}/external_ids") or {}).get("imdb_id")
+
+
+def search_tv(query, limit=5):
+    """TV show search results (title, first-air year, imdb id, poster)"""
+    query = re.sub(r"\s+", " ", str(query or "")).strip()
+    if len(query) < 2:
+        return []
+    data = _get("/search/tv", query=query) or {}
+    return [{
+        "tmdb_id": item["id"],
+        "title": item.get("name") or "",
+        "year": (item.get("first_air_date") or "")[:4],
+        "imdb_id": tv_imdb_id(item["id"]),
+        "poster_url": f"{POSTER}{item['poster_path']}" if item.get("poster_path") else None,
+        "popularity": item.get("popularity") or 0,
+        "video_type": "series",
+    } for item in (data.get("results") or [])[:limit]]

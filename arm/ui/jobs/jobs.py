@@ -197,6 +197,21 @@ def jobdetail_load():
     return redirect(url_for('route_jobs.jobdetail', job_id=job_id))
 
 
+SEARCH_TYPES = {"both": "Movies and TV shows", "movie": "Movies", "series": "TV shows"}
+VIDEO_TYPES = {"movie": "Movie", "series": "TV show"}
+
+
+def _search_type():
+    """What the title search looks for: both (default), movie or series"""
+    value = request.args.get("type", "both")
+    return value if value in SEARCH_TYPES else "both"
+
+
+def _default_search_type(job):
+    """Search TV shows first for a job that is already a TV show, otherwise both"""
+    return "series" if getattr(job, "video_type", None) == "series" else "both"
+
+
 @route_jobs.route('/titlesearch')
 @login_required
 def title_search():
@@ -209,8 +224,9 @@ def title_search():
     if form.validate():
         flash(f'Search for {request.args.get("title")}, year={request.args.get("year")}', 'success')
         return redirect(url_for('route_jobs.list_titles', title=request.args.get("title"),
-                                year=request.args.get("year"), job_id=job_id))
-    return render_template('titlesearch.html', title='Update Title', form=form, job=job)
+                                year=request.args.get("year"), job_id=job_id, type=_search_type()))
+    return render_template('titlesearch.html', title='Update Title', form=form, job=job,
+                           search_types=SEARCH_TYPES, media_type=_default_search_type(job))
 
 
 @route_jobs.route('/customTitle')
@@ -233,6 +249,8 @@ def customtitle():
             'year': request.args.get("year"),
             'year_manual': request.args.get("year")
         }
+        if request.args.get("type") in VIDEO_TYPES:
+            args['video_type'] = args['video_type_manual'] = request.args.get("type")
         notification = Notifications(f"Job: {job.job_id} was updated",
                                      f'Title: {job.title} ({job.year}) was updated to '
                                      f'{new_title} ({request.args.get("year")})')
@@ -241,7 +259,7 @@ def customtitle():
         flash(f'Custom title changed. Title={job.title}, Year={job.year}.', "success")
         _retitle_finished(job, old_path, old_base)
         return redirect(url_for('home'))
-    return render_template('customTitle.html', title='Change Title', form=form, job=job)
+    return render_template('customTitle.html', title='Change Title', form=form, job=job, video_types=VIDEO_TYPES)
 
 
 @route_jobs.route('/gettitle')
@@ -361,18 +379,20 @@ def list_titles():
         raise ValidationError
     job = Job.query.get(job_id)
     form = TitleSearchForm(obj=job)
-    search_results = ui_utils.metadata_selector("search", title, year)
+    media_type = _search_type()
+    search_results = ui_utils.metadata_selector("search", title, year, media_type=media_type)
     if search_results is None or 'Error' in search_results or (
             'Search' in search_results and len(search_results['Search']) < 1):
         app.logger.debug("No results found. Trying without year")
         flash(f"No search results found for {title} ({year})<br/> Trying without year", 'danger')
-        search_results = ui_utils.metadata_selector("search", title, "")
+        search_results = ui_utils.metadata_selector("search", title, "", media_type=media_type)
 
     if search_results is None or 'Error' in search_results or (
             'Search' in search_results and len(search_results['Search']) < 1):
         flash(f"No search results found for {title}", 'danger')
     return render_template('list_titles.html', results=search_results, job_id=job_id,
-                           form=form, title=title, year=year)
+                           form=form, title=title, year=year, media_type=media_type,
+                           search_types=SEARCH_TYPES)
 
 
 @route_jobs.route('/json', methods=['GET'])

@@ -724,6 +724,8 @@ def _automation_summary():
             "finished": job.status in (JobState.SUCCESS.value, JobState.FAILURE.value),
             "has_files": bool(job.path and os.path.isdir(job.path) and not data.get("files_deleted")),
             "dismissed_failure": bool(data.get("dismissed_failure")),
+            "video_type": job.video_type,
+            "suggestion": confidence.get("suggestion"),
         }
         if entry["confidence"] is not None or entry["attention"] or entry["finished"]:
             result[str(job.job_id)] = entry

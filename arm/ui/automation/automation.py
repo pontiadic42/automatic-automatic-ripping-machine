@@ -19,7 +19,7 @@ from arm.ui import app, csrf, db
 
 route_automation = Blueprint('route_automation', __name__, template_folder='templates', static_folder='../static')
 
-ACTIONS = {"confirm": "Keep this title"}
+ACTIONS = {"confirm": "Keep this title", "suggest": "Use the suggested title"}
 
 
 def confirm_title(job):
@@ -55,6 +55,10 @@ def act():
     if action == "confirm":
         confirm_title(job)
         app.logger.info(f"Job {job_id}: title confirmed from a notification")
+    elif action == "suggest":
+        if not apply_suggestion(job):
+            abort(404)
+        app.logger.info(f"Job {job_id}: suggested title taken from a notification")
     if request.headers.get("Accept", "").startswith("text/html") or request.form.get("from_page"):
         return render_template("automation_act.html", job=job, action=action, label=ACTIONS[action],
                                token=token, done=True)
@@ -81,7 +85,8 @@ def job_action():
     Buttons on the home page banner and the job page:
     accept (keep ARM's guessed title), cancel (stop a running job), delete_files (remove a
     finished job's output folder), dismiss (hide a banner item), keep_version (keep one
-    language version and delete the others), keep_all (keep every language version).
+    language version and delete the others), keep_all (keep every language version), set_type
+    (movie <-> TV show), use_suggestion (take the title A2RM suggested).
     """
     job_id = request.form.get("job", type=int)
     action = request.form.get("action", "")
@@ -127,8 +132,59 @@ def job_action():
         message = f"Deleted {folder}."
     elif action in ("keep_version", "keep_all"):
         return _version_action(job, action)
+    elif action in ("set_type", "use_suggestion"):
+        return _title_action(job, action)
     else:
         return {"success": False, "message": "Unknown action"}, 400
+    return {"success": True, "message": message}
+
+
+def apply_suggestion(job, commit=True):
+    """Take the title A2RM suggested for a low-confidence job (as a manual value: ends ARM's wait)"""
+    suggestion = (store.load_job(job.job_id).get("confidence") or {}).get("suggestion")
+    if not suggestion:
+        return None
+    from arm.ui import utils as ui_utils
+    job.title = job.title_manual = ui_utils.clean_for_filename(suggestion["title"])
+    job.year = job.year_manual = suggestion.get("year") or ""
+    job.video_type = job.video_type_manual = suggestion.get("video_type") or "movie"
+    job.imdb_id = job.imdb_id_manual = suggestion.get("imdb_id")
+    job.poster_url = job.poster_url_manual = suggestion.get("poster_url")
+    job.hasnicetitle = True
+    if commit:
+        db.session.commit()
+        data = store.load_job(job.job_id)
+        store.update_job(job.job_id, confidence=dict(data.get("confidence") or {}, confirmed=True))
+        store.clear_attention(job.job_id, "confidence")
+    return suggestion
+
+
+def _title_action(job, action):
+    """
+    set_type: switch the job between movie and TV show (the title stays). use_suggestion: take
+    the title A2RM found as a likely alternative. Either way the value becomes a manual one (which
+    ends ARM's wait), and a finished job's files move to the matching folder.
+    """
+    from arm.ui.jobs import jobs as jobs_routes
+    old_path, old_base = getattr(job, "path", None), jobs_routes._title_base(job)
+    if action == "set_type":
+        new_type = request.form.get("type", "")
+        if new_type not in ("movie", "series"):
+            return {"success": False, "message": "Pick movie or TV show."}, 400
+        if not job.title_manual:
+            confirm_title(job)  # keep the current title as the user's choice
+        job.video_type = job.video_type_manual = new_type
+        message = f"{job.title_manual or job.title} is now a {'TV show' if new_type == 'series' else 'movie'}."
+    else:
+        suggestion = apply_suggestion(job, commit=False)
+        if not suggestion:
+            return {"success": False, "message": "There's no suggestion for this job."}, 400
+        message = f"Using {suggestion['title']}" + (f" ({job.year})" if job.year else "") + "."
+    db.session.commit()
+    data = store.load_job(job.job_id)
+    store.update_job(job.job_id, confidence=dict(data.get("confidence") or {}, confirmed=True))
+    jobs_routes._retitle_finished(job, old_path, old_base)
+    app.logger.info(f"Job {job.job_id}: {message}")
     return {"success": True, "message": message}
 
 

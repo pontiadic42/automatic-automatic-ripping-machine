@@ -238,6 +238,16 @@
             if (info.title_known) {
                 html += actionButton(jobId, "accept", "Accept title");
             }
+            if (info.suggestion) {
+                const s = info.suggestion;
+                html += actionButton(jobId, "use_suggestion",
+                    `Use ${esc(s.title)}${s.year ? ` (${esc(s.year)})` : ""}${s.video_type === "series" ? ", TV show" : ""}`);
+            }
+            if (info.video_type === "movie" || info.video_type === "series") {
+                const other = info.video_type === "series" ? "movie" : "series";
+                html += actionButton(jobId, "set_type", other === "series" ? "It's a TV show" : "It's a movie",
+                    ` data-type="${other}"`);
+            }
             html += `<a class="arm-btn" href="titlesearch?job_id=${id}">Pick another</a>`;
             if (!info.finished) {
                 html += actionButton(jobId, "cancel", "Cancel job");
@@ -263,7 +273,8 @@
             return;
         }
         const token = document.querySelector('meta[name="csrf-token"]');
-        const body = new URLSearchParams({job: button.dataset.job, action: action, kind: button.dataset.kind || ""});
+        const body = new URLSearchParams({job: button.dataset.job, action: action, kind: button.dataset.kind || "",
+                                           type: button.dataset.type || ""});
         button.disabled = true;
         fetch("/automation/job_action", {
             method: "POST", body: body, credentials: "same-origin",

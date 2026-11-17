@@ -23,6 +23,14 @@
                         </div>
                         <input type="text" class="form-control" name="year" value="{{ year }}" aria-label="year"
                                aria-describedby="basic-addon1">
+                        <div class="input-group-prepend">
+                        	<span class="input-group-text" id="searchtype">Type</span>
+                        </div>
+                        <select class="form-control" name="type" aria-label="Search for" aria-describedby="searchtype">
+                        	{% for value, label in search_types.items() %}
+                        		<option value="{{ value }}" {{ 'selected' if value == media_type }}>{{ label }}</option>
+                        	{% endfor %}
+                        </select>
                     </div>
                     <input class="form-control" name="job_id" value="{{ job_id }}" hidden>
                     <input class="form-control" name="save" value="save" hidden>
@@ -42,7 +50,7 @@
                                   <img src="{{ res["Poster"] }}" width="120px" class="img-thumbnail" alt="Poster image">
                                 </a>
                             </div>
-                            <div class="card-body"><strong>{{ res["Title"] }}</strong> - {{ res["Type"].capitalize() }}
+                            <div class="card-body"><strong>{{ res["Title"] }}</strong> - {{ "TV show" if res["Type"].lower() == "series" else res["Type"].capitalize() }}
                                 ({{ res["Year"] }})
                             </div>
                         </div>

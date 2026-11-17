@@ -483,7 +483,7 @@ def job_dupe_check(crc_id):
     return False, None
 
 
-def metadata_selector(func, query="", year="", imdb_id=""):
+def metadata_selector(func, query="", year="", imdb_id="", media_type=None):
     """
     Used to switch between OMDB or TMDB as the metadata provider
     - TMDB returned queries are converted into the OMDB format
@@ -492,6 +492,7 @@ def metadata_selector(func, query="", year="", imdb_id=""):
     :param query: this can either be a search string or movie/show title
     :param year: the year of movie/show release
     :param imdb_id: the imdb id to lookup
+    :param media_type: for "search": "movie", "series" or "both" (None: movies, TV only when no movie matches)
 
     :return: json/dict object
     """
@@ -499,7 +500,7 @@ def metadata_selector(func, query="", year="", imdb_id=""):
     if cfg.arm_config['METADATA_PROVIDER'].lower() == "tmdb":
         app.logger.debug(f"provider tmdb - function: {func}")
         if func == "search":
-            return_function = tmdb_search(str(query), str(year))
+            return_function = tmdb_search(str(query), str(year), media_type)
         elif func == "get_details":
             if query:
                 app.logger.debug("provider tmdb - using: get_tmdb_poster")
@@ -512,7 +513,7 @@ def metadata_selector(func, query="", year="", imdb_id=""):
     elif cfg.arm_config['METADATA_PROVIDER'].lower() == "omdb":
         app.logger.debug(f"provider omdb - function: {func}")
         if func == "search":
-            return_function = call_omdb_api(str(query), str(year))
+            return_function = call_omdb_api(str(query), str(year), media_type=media_type)
         elif func == "get_details":
             return_function = call_omdb_api(title=str(query), year=str(year), imdb_id=str(imdb_id), plot="full")
     else:

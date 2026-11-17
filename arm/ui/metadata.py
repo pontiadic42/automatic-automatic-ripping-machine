@@ -29,8 +29,9 @@ def _tmdb_search_request(kind, search_query, tmdb_api_key, year=None):
     return requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params)
 
 
-def call_omdb_api(title=None, year=None, imdb_id=None, plot="short"):
+def call_omdb_api(title=None, year=None, imdb_id=None, plot="short", media_type=None):
     """
+    media_type: "movie" or "series" limits a title search to that type (None or "both": no limit)
     Queries OMDbapi.org for title information and parses if it's a movie
         or a tv series
     :param title: Title of job
@@ -54,6 +55,8 @@ def call_omdb_api(title=None, year=None, imdb_id=None, plot="short"):
             str_url = f"https://www.omdbapi.com/?s={title}&y={year}&plot={plot}&r=json&apikey={omdb_api_key}"
         else:
             str_url = f"https://www.omdbapi.com/?s={title}&plot={plot}&r=json&apikey={omdb_api_key}"
+        if media_type in ("movie", "series"):
+            str_url += f"&type={media_type}"
     else:
         app.logger.debug("no params")
     # connect to omdb and add background key
@@ -163,14 +166,18 @@ def tmdb_process_poster(search_results, poster_base):
     return None
 
 
-def tmdb_search(search_query=None, year=None):
+def tmdb_search(search_query=None, year=None, media_type=None):
     """
     Queries api.themoviedb.org for movies close to the query
     :param search_query: title of movie or tv show
     :param year: year of release
+    :param media_type: None = movies, or TV shows when no movie matches (what the ripper uses);
+                       "movie" = movies only; "series" = TV shows only; "both" = movies and TV shows
     :return: json/dict of search results
     """
     tmdb_api_key = cfg.arm_config['TMDB_API_KEY']
+    if media_type in ("movie", "series", "both"):
+        return _tmdb_search_typed(search_query, year, media_type, tmdb_api_key)
     search_results, poster_base, response = tmdb_fetch_results(search_query, year, tmdb_api_key)
     app.logger.debug(f"Search results - movie - {search_results}")
     if 'status_code' in search_results:
@@ -193,6 +200,27 @@ def tmdb_search(search_query=None, year=None):
     return None
 
 
+def _tmdb_search_typed(search_query, year, media_type, tmdb_api_key):
+    """Search movies, TV shows or both (both: movies first, each result labelled with its type)"""
+    poster_base = "https://image.tmdb.org/t/p/original"
+    combined = {}
+    for kind, label in (("movie", "movie"), ("tv", "series")):
+        if media_type not in (label, "both"):
+            continue
+        params = {"api_key": tmdb_api_key, "query": _query_text(search_query)}
+        if year:
+            # TMDb's TV search filters on the first air date, its movie search on any release year
+            params["first_air_date_year" if kind == "tv" else "year"] = year
+        results = json.loads(requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params).text)
+        if 'status_code' in results:
+            app.logger.error(f"tmdb search failed with error - {results.get('status_message')}")
+            continue
+        if results.get('total_results'):
+            found = tmdb_process_results(poster_base, {}, results, label)
+            combined.setdefault('Search', []).extend(found['Search'])
+    return combined or None
+
+
 def tmdb_process_results(poster_base, return_results, search_results, media_type="movie"):
     """
     Process search result so that it follows omdb style of output
@@ -206,7 +234,7 @@ def tmdb_process_results(poster_base, return_results, search_results, media_type
         app.logger.debug(result)
         result['poster_path'] = result['poster_path'] if result['poster_path'] is not None else None
         result['release_date'] = '0000-00-00' if 'release_date' not in result else result['release_date']
-        result['imdbID'] = tmdb_get_imdb(result['id'])
+        result['imdbID'] = tmdb_get_imdb(result['id'], media_type)
         result['Year'] = re.sub(TMDB_YEAR_REGEX, "", result['first_air_date']) if 'first_air_date' in result else \
             re.sub(TMDB_YEAR_REGEX, "", result['release_date'])
         result['Title'] = result['title'] if 'title' in result else result['name']  # This isn't great
@@ -218,8 +246,10 @@ def tmdb_process_results(poster_base, return_results, search_results, media_type
     return return_results
 
 
-def tmdb_get_imdb(tmdb_id):
+def tmdb_get_imdb(tmdb_id, media_type=None):
     """
+    Movie and TV ids are separate number ranges, so a TV show's id can also be some movie's id:
+    TV results (media_type "series") are looked up as TV only.
     Queries api.themoviedb.org for imdb_id by TMDB id\n
     :param tmdb_id: tmdb id of media
     :return: str of imdb_id
@@ -230,6 +260,9 @@ def tmdb_get_imdb(tmdb_id):
     url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={tmdb_api_key}&" \
           f"append_to_response=alternative_titles,credits,images,keywords,releases,reviews,similar,videos,external_ids"
     url_tv = f"https://api.themoviedb.org/3/tv/{tmdb_id}/external_ids?api_key={tmdb_api_key}"
+    if media_type == "series":
+        tv_json = json.loads(requests.get(url_tv).text)
+        return None if 'status_code' in tv_json else tv_json.get('imdb_id')
     # Making a get request
     response = requests.get(url)
     search_results = json.loads(response.text)

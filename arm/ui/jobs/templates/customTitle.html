@@ -28,6 +28,16 @@
 				</div>
 				<input type="text" class="form-control" name="year" aria-label="year" value="{{ job.year if job.year != '' else '' }}" aria-describedby="basic-addon1">
 			</div>
+			<div class="input-group mb-3 flex-nowrap">
+				<div class="input-group-prepend">
+					<span class="input-group-text" id="videotype">Type</span>
+				</div>
+				<select class="form-control" name="type" aria-label="Movie or TV show" aria-describedby="videotype">
+					{% for value, label in video_types.items() %}
+						<option value="{{ value }}" {{ 'selected' if value == job.video_type }}>{{ label }}</option>
+					{% endfor %}
+				</select>
+			</div>
 			<input class="form-control" name="job_id" value="{{ job.job_id }}" hidden>
 			<button class="btn btn-info btn-lg btn-block" type="submit">Set Custom Title</button>
 		</form>
