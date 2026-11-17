@@ -65,6 +65,13 @@ SCHEMA = (
     Setting("START_NOW_BUTTONS", True, "bool", "identify", "\"Start now\" buttons",
             "While ARM waits before ripping, show a Start now button (home page drive bay, job page and the "
             "phone notification when it has room) that ends the wait and keeps the current title."),
+    Setting("DISCDB_LOOKUP", False, "bool", "identify", "Look discs up in TheDiscDB",
+            "Compute the disc's TheDiscDB hash (from its file sizes, on this server) and look it up on "
+            "thediscdb.com. Only the 32-character hash is sent. A known disc gets its title, a top confidence "
+            "score, the right main title / extras and the TV episode numbers. Off by default because it "
+            "contacts an outside service."),
+    Setting("DISCDB_URL", "https://thediscdb.com/graphql", "str", "identify", "TheDiscDB address",
+            "GraphQL address used for the lookup."),
     Setting("RUNTIME_MATCHING", True, "bool", "identify", "Use the runtime to identify",
             "When the label is vague, search TMDb and pick the result whose runtime matches the main title."),
 

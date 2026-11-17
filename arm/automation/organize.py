@@ -101,11 +101,29 @@ def save_season(job_id, season, first_episode=None):
     return choice
 
 
+def _discdb_numbers(job, episodes):
+    """TheDiscDB's episode numbers (C24) unless you picked a season: (numbers, message) or None"""
+    from arm.automation import discdb
+    if not episodes or chosen_season(job):
+        return None
+    numbers = discdb.episode_numbers(episodes)
+    if not numbers:
+        return None
+    seasons = sorted({s for s, _e in numbers.values()})
+    first, last = min(e for _s, e in numbers.values()), max(e for _s, e in numbers.values())
+    return numbers, f"Season {', '.join(map(str, seasons))}, episodes {first}-{last} (from TheDiscDB)"
+
+
 def match_episodes(job, episodes):
     """
-    Number the episode titles (sorted by title number) using TMDb's episode runtimes.
+    Number the episode titles: TheDiscDB's numbers when it knows the disc, else TMDb's runtimes.
     :return: ({tid: (season, episode)}, message) - empty dict when it isn't sure
     """
+    return _discdb_numbers(job, episodes) or _match_tmdb_episodes(job, episodes)
+
+
+def _match_tmdb_episodes(job, episodes):
+    """Number the episode titles (sorted by title number) using TMDb's episode runtimes"""
     from arm.automation import tmdb
     if not settings.get("TV_EPISODE_MATCHING") or not episodes:
         return {}, "Episode matching is off"

@@ -25,6 +25,9 @@ TV_HINT = re.compile(r"\bcomplete\s+(series|season|seasons)\b|\b(season|series)\
 ABBREVIATIONS = {"dr": "doctor", "mr": "mister", "mrs": "missus", "st": "saint"}
 
 
+DISCDB_SCORE = 98
+
+
 def clean_label(label):
     """DONT_BREATHE_WS_D1 -> 'dont breathe'; DR_WHO_COMPLETE_SERIES_2018_D23 -> 'dr who'"""
     text = str(label or "").replace("_", " ").replace(".", " ").strip().lower()
@@ -210,6 +213,11 @@ def evaluate(job, main_seconds, lengths=None):
     label = clean_label(job.label)
     value, reasons = score(bool(job.hasnicetitle) and normalize_title(job.title) not in ("", "none", "not identified"),
                            bool(label), similarity(job.label, job.title), diff, prior_rip(job), series=series)
+    from arm.automation import discdb
+    hit = discdb.hit_for(job)
+    if hit:
+        value = max(value, DISCDB_SCORE)
+        reasons.insert(0, f"TheDiscDB knows this disc ({hit['release'] or hit['title']})")
     return {"score": value, "reasons": reasons, "main_minutes": round(main_seconds / 60, 1) if main_seconds else None,
             "tmdb_runtime": runtime}
 

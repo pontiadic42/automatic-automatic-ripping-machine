@@ -377,6 +377,11 @@ def plan(job, raw):
         runtime = tmdb.runtime_minutes(job.imdb_id)
         decisions, ambiguous = analyze_movie(titles, preferred, runtime,
                                              rip_extras=not bool(cfg.arm_config.get("MAINFEATURE")))
+    try:
+        from arm.automation import discdb
+        discdb.apply(job, titles, decisions)
+    except Exception as error:  # noqa: BLE001 - optional
+        logging.info(f"TheDiscDB title roles not used: {error}")
     result = {"titles": [decisions[t.tid] for t in titles if t.tid in decisions], "ambiguous_language": ambiguous}
     store.update_job(job.job_id, titles=result)
     summary = ", ".join(f"{d['tid']}={d['role']}{'' if d['rip'] else '(skip)'}" for d in result["titles"])

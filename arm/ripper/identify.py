@@ -70,6 +70,9 @@ def identify(job):
     if mounted:
         # Check with the job class to get the correct disc type
         job.get_disc_type(utils.find_file("HVDVD_TS", job.mountpoint))
+        # TheDiscDB content hash (DISCDB_LOOKUP): needs the mounted disc, computed locally
+        from arm.automation import hooks as automation_hooks
+        automation_hooks.disc_hash(job)
 
     if job.disctype in ["dvd", "bluray"]:
 
