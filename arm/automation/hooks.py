@@ -5,7 +5,7 @@ than failing the rip (except where stopping is the point: skip, no disk space).
 """
 import logging
 
-from arm.automation import confidence, jellyfin, notify, organize, prechecks, settings, store, titles
+from arm.automation import confidence, hwcheck, jellyfin, notify, organize, prechecks, settings, store, titles
 
 JobSkipped = prechecks.JobSkipped
 
@@ -29,6 +29,7 @@ def after_identify(job):
     result = _safely("confidence", confidence.assess, job)
     _safely("already ripped", prechecks.check_already_ripped, job)
     _safely("disk space", prechecks.check_disk_space, job)
+    _safely("hardware encoder check", hwcheck.precheck, job)
     return result
 
 

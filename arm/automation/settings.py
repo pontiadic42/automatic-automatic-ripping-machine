@@ -25,6 +25,7 @@ GROUPS = (
     ("before", "Before ripping"),
     ("titles", "Titles, cuts and languages"),
     ("checks", "Checks and retries"),
+    ("hardware", "Hardware encoding"),
     ("jellyfin", "Jellyfin"),
     ("housekeeping", "Housekeeping"),
 )
@@ -112,6 +113,15 @@ SCHEMA = (
             "Comma-separated ISO 639-2 codes, e.g. eng,fra."),
     Setting("KEEP_SUBTITLE_LANGUAGES", "eng", "langs", "checks", "Subtitle languages",
             "Comma-separated ISO 639-2 codes."),
+
+    # Hardware encoding
+    Setting("HW_ENCODER_CHECK", True, "bool", "hardware", "Test the hardware encoder before ripping",
+            "When HB_ARGS_DVD / HB_ARGS_BD ask for a GPU encoder (qsv_h264, nvenc_h265, ...), run a 3-second test "
+            "encode before ripping (cached for 10 minutes) and warn you if it fails. HandBrake's own "
+            "\"qsv is available\" message can't be trusted."),
+    Setting("HW_ENCODER_FALLBACK", True, "bool", "hardware", "Fall back to the CPU",
+            "If the hardware encoder fails (the test before ripping, or HandBrake itself), transcode on the CPU "
+            "with x264/x265 instead of failing the job after the rip. Slower, and you're told."),
 
     # Jellyfin
     Setting("JELLYFIN_URL", "", "str", "jellyfin", "Jellyfin address",

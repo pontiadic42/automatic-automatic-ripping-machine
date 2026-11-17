@@ -122,13 +122,28 @@ class TestCachedChecks(unittest.TestCase):
     def test_handbrake_hardware_check_runs_once(self):
         settings_routes.check_hw_transcode_support.cache_clear()
         with app.app_context(), patch.object(settings_routes, "arm_subprocess",
-                                             return_value="qsv: is available on GPU 0") as run:
+                                             return_value="qsv: is available on GPU 0") as run, \
+                patch.object(settings_routes, "_render_nodes", return_value=["renderD128"]), \
+                patch.object(settings_routes.os, "access", return_value=True), \
+                patch("arm.automation.hwcheck.last_result", return_value=None):
             first = settings_routes.check_hw_transcode_support()
             second = settings_routes.check_hw_transcode_support()
         settings_routes.check_hw_transcode_support.cache_clear()
         self.assertEqual(run.call_count, 1)
         self.assertTrue(first["intel"])
         self.assertEqual(first, second)
+
+    def test_qsv_message_without_gpu_is_not_support(self):
+        """CHECK (C12) HandBrake's "qsv: is available" alone doesn't count: no render node, or a failed test"""
+        for nodes, tested in (([], None), (["renderD128"], {"ok": False})):
+            settings_routes.check_hw_transcode_support.cache_clear()
+            with app.app_context(), patch.object(settings_routes, "arm_subprocess",
+                                                 return_value="qsv: is available on GPU 0"), \
+                    patch.object(settings_routes, "_render_nodes", return_value=nodes), \
+                    patch.object(settings_routes.os, "access", return_value=True), \
+                    patch("arm.automation.hwcheck.last_result", return_value=tested):
+                self.assertFalse(settings_routes.check_hw_transcode_support()["intel"])
+        settings_routes.check_hw_transcode_support.cache_clear()
 
     def test_github_update_check_is_cached(self):
         ui_utils._git_update_cache.clear()

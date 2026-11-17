@@ -145,6 +145,13 @@ def settings():
                            abcde_read_only=is_read_only(cfg.abcde_config_path))
 
 
+def _render_nodes():
+    try:
+        return [name for name in os.listdir("/dev/dri") if name.startswith("renderD")]
+    except OSError:
+        return []
+
+
 @lru_cache(maxsize=1)
 def check_hw_transcode_support():
     """
@@ -166,10 +173,19 @@ def check_hw_transcode_support():
         if re.search(r'nvenc: version ([0-9\\.]+) is available', str(hand_brake_output)):
             app.logger.info("NVENC supported!")
             hw_support_status["nvidia"] = True
-        # Intel QuickSync
+        # Intel QuickSync. HandBrake prints "qsv: is available" even with no GPU, no driver or a
+        # user who can't open the device, so also need the render node, and trust a real test
+        # encode (Settings > Automation > Hardware check, or the pre-rip check) when there is one.
         if re.search(r'qsv:\sis(.*?)available\son', str(hand_brake_output)):
-            app.logger.info("Intel QuickSync supported!")
-            hw_support_status["intel"] = True
+            from arm.automation import hwcheck
+            tested = hwcheck.last_result("qsv_h264")
+            if tested is not None:
+                hw_support_status["intel"] = bool(tested.get("ok"))
+            else:
+                hw_support_status["intel"] = any(os.access(os.path.join("/dev/dri", name), os.R_OK | os.W_OK)
+                                                 for name in _render_nodes())
+            app.logger.info("Intel QuickSync " + ("usable" if hw_support_status["intel"] else
+                                                  "reported by HandBrake, but no usable GPU/test encode"))
         # AMD VCN
         if re.search(r'vcn:\sis(.*?)available\son', str(hand_brake_output)):
             app.logger.info("AMD VCN supported!")

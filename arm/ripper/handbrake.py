@@ -10,22 +10,35 @@ import arm.config.config as cfg
 
 from arm.ripper import utils
 from arm.automation import hooks as automation_hooks
+from arm.automation import hwcheck
 from arm.ui import app, db  # noqa E402
 from arm.models.job import JobState
 
 PROCESS_COMPLETE = "Handbrake processing complete"
 
 
-def run_handbrake_command(cmd, track=None, track_number=None):
+def run_handbrake_command(cmd, track=None, track_number=None, job=None):
     """
     Execute a HandBrake command and handle errors consistently.
+    With a job and HW_ENCODER_FALLBACK on, a failed hardware encode (QSV/NVENC/VCE)
+    is tried once more on the CPU.
 
     :param cmd: The HandBrake command to execute
     :param track: Optional track object to update status
     :param track_number: Optional track number for error messages
+    :param job: Optional job, for the CPU fallback
     :return: Output from HandBrake command
     :raises subprocess.CalledProcessError: If HandBrake fails
     """
+    if job is not None:
+        try:
+            return run_handbrake_command(cmd, track, track_number)
+        except subprocess.CalledProcessError:
+            retry = hwcheck.retry_command(cmd)
+            if not retry:
+                raise
+            hwcheck.record_runtime_fallback(job, cmd)
+            return run_handbrake_command(retry, track, track_number)
     logging.debug(f"Sending command: {cmd}")
 
     try:
@@ -133,7 +146,7 @@ def handbrake_main_feature(srcpath, basepath, logfile, job):
     cmd = build_handbrake_command(srcpath, filepathname, hb_preset, hb_args, logfile, main_feature=True)
 
     try:
-        run_handbrake_command(cmd, track)
+        run_handbrake_command(cmd, track, job=job)
         logging.info("Handbrake call successful")
     except subprocess.CalledProcessError:
         job.errors = track.error
@@ -194,7 +207,7 @@ def handbrake_all(srcpath, basepath, logfile, job):
                                           track_number=track.track_number)
 
             try:
-                run_handbrake_command(cmd, track, track.track_number)
+                run_handbrake_command(cmd, track, track.track_number, job=job)
             except subprocess.CalledProcessError:
                 db.session.commit()
                 raise
@@ -220,6 +233,8 @@ def correct_hb_settings(job):
     elif job.disctype == "bluray":
         hb_args = job.config.HB_ARGS_BD
         hb_preset = job.config.HB_PRESET_BD
+    # Hardware encoder failed its test before the rip: use the CPU for this job
+    hb_args = hwcheck.adjust_args(job, hb_args)
     return hb_args, hb_preset
 
 
@@ -256,7 +271,7 @@ def handbrake_mkv(srcpath, basepath, logfile, job):
         logging.info(f"Transcoding file {shlex.quote(files)} to {shlex.quote(filepathname)}")
 
         cmd = build_handbrake_command(srcpathname, filepathname, hb_preset, hb_args, logfile)
-        run_handbrake_command(cmd)
+        run_handbrake_command(cmd, job=job)
 
     logging.info(PROCESS_COMPLETE)
     logging.debug(f"\n\r{job.pretty_table()}")
