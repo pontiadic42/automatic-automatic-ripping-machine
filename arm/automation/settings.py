@@ -57,6 +57,9 @@ SCHEMA = (
     Setting("LOW_CONFIDENCE_WAIT_TIME", 900, "int", "identify", "Wait for low confidence (seconds)",
             "How long to wait for you when the score is low. After that ARM rips with its best guess. "
             "0 = use MANUAL_WAIT_TIME."),
+    Setting("START_NOW_BUTTONS", True, "bool", "identify", "\"Start now\" buttons",
+            "While ARM waits before ripping, show a Start now button (home page drive bay, job page and the "
+            "phone notification when it has room) that ends the wait and keeps the current title."),
     Setting("RUNTIME_MATCHING", True, "bool", "identify", "Use the runtime to identify",
             "When the label is vague, search TMDb and pick the result whose runtime matches the main title."),
 

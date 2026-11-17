@@ -19,7 +19,19 @@ from arm.ui import app, csrf, db
 
 route_automation = Blueprint('route_automation', __name__, template_folder='templates', static_folder='../static')
 
-ACTIONS = {"confirm": "Keep this title", "suggest": "Use the suggested title"}
+ACTIONS = {"confirm": "Keep this title", "suggest": "Use the suggested title", "start": "Start ripping now"}
+
+
+def start_now(job):
+    """
+    End ARM's manual wait now, keeping the current title as it is (unlike confirm_title, the
+    title isn't marked as confirmed). The ripper's wait loop checks this every 5 seconds.
+    :return: False if the job isn't waiting
+    """
+    if job.status != "waiting" or not settings.get("START_NOW_BUTTONS"):
+        return False
+    store.update_job(job.job_id, start_now=True)
+    return True
 
 
 def confirm_title(job):
@@ -58,6 +70,11 @@ def act():
     elif action == "suggest":
         if not apply_suggestion(job):
             abort(404)
+    elif action == "start":
+        if not start_now(job):
+            return render_template("automation_act.html", job=job, action=action, label=ACTIONS[action],
+                                   token=token, done=True, not_waiting=True)
+        app.logger.info(f"Job {job_id}: wait ended from a notification")
         app.logger.info(f"Job {job_id}: suggested title taken from a notification")
     if request.headers.get("Accept", "").startswith("text/html") or request.form.get("from_page"):
         return render_template("automation_act.html", job=job, action=action, label=ACTIONS[action],
@@ -83,8 +100,8 @@ def _deletable_folder(job):
 def job_action():
     """
     Buttons on the home page banner and the job page:
-    accept (keep ARM's guessed title), cancel (stop a running job), delete_files (remove a
-    finished job's output folder), dismiss (hide a banner item), keep_version (keep one
+    accept (keep ARM's guessed title), start_now (end the manual wait now), cancel (stop a
+    running job), delete_files (remove a finished job's output folder), dismiss (hide a banner item), keep_version (keep one
     language version and delete the others), keep_all (keep every language version), set_type
     (movie <-> TV show), use_suggestion (take the title A2RM suggested).
     """
@@ -93,50 +110,68 @@ def job_action():
     job = Job.query.get(job_id) if job_id is not None else None
     if job is None:
         return {"success": False, "message": "Job not found"}, 404
-    name = job.title_manual or job.title or job.label or f"job {job_id}"
-    if action == "accept":
-        if not job.finished:
-            confirm_title(job)
-            message = f"Keeping {name}. ARM starts ripping when its wait ends."
-        else:
-            store.clear_attention(job_id, "confidence")
-            message = f"Kept {name}."
-    elif action == "dismiss":
-        kind = request.form.get("kind") or "confidence"
-        store.clear_attention(job_id, kind)
-        if kind == "failed":
-            # The "failed in the last 24 hours" banner isn't a stored item; remember it was dismissed
-            store.update_job(job_id, dismissed_failure=True)
-        message = "Dismissed."
-    elif action == "cancel":
-        if job.finished:
-            return {"success": False, "message": "This job has already finished."}, 400
-        from arm.ui import json_api
-        result = json_api.abandon_job(str(job_id))
-        if not result.get("success"):
-            return {"success": False, "message": result.get("Error") or "Couldn't stop the job."}, 500
-        for item in store.load_job(job_id).get("attention") or []:
-            store.clear_attention(job_id, item.get("kind"))
-        message = f"Stopped {name} and ejected the disc."
-    elif action == "delete_files":
-        if not job.finished:
-            return {"success": False, "message": "Stop the job first."}, 400
-        folder = _deletable_folder(job)
-        if folder is None:
-            return {"success": False, "message": "There's no output folder ARM can safely delete for this job."}, 400
-        shutil.rmtree(folder)
-        app.logger.info(f"Job {job_id}: deleted its output folder {folder} from the web UI")
-        store.update_job(job_id, files_deleted=folder, attention=[])
-        from arm.automation import jellyfin
-        jellyfin.announce(None, folder)
-        message = f"Deleted {folder}."
-    elif action in ("keep_version", "keep_all"):
+    if action in ("keep_version", "keep_all"):
         return _version_action(job, action)
-    elif action in ("set_type", "use_suggestion"):
+    if action in ("set_type", "use_suggestion"):
         return _title_action(job, action)
-    else:
+    handler = {"accept": _accept, "start_now": _start_now, "dismiss": _dismiss, "cancel": _cancel,
+               "delete_files": _delete_files}.get(action)
+    if handler is None:
         return {"success": False, "message": "Unknown action"}, 400
-    return {"success": True, "message": message}
+    name = job.title_manual or job.title or job.label or f"job {job_id}"
+    result = handler(job, name)
+    if isinstance(result, tuple):
+        return {"success": False, "message": result[0]}, result[1]
+    return {"success": True, "message": result}
+
+
+def _accept(job, name):
+    if not job.finished:
+        confirm_title(job)
+        return f"Keeping {name}. ARM starts ripping when its wait ends."
+    store.clear_attention(job.job_id, "confidence")
+    return f"Kept {name}."
+
+
+def _start_now(job, name):
+    if not start_now(job):
+        return "This job isn't waiting any more.", 400
+    return f"Starting {name} within a few seconds."
+
+
+def _dismiss(job, _name):
+    kind = request.form.get("kind") or "confidence"
+    store.clear_attention(job.job_id, kind)
+    if kind == "failed":
+        # The "failed in the last 24 hours" banner isn't a stored item; remember it was dismissed
+        store.update_job(job.job_id, dismissed_failure=True)
+    return "Dismissed."
+
+
+def _cancel(job, name):
+    if job.finished:
+        return "This job has already finished.", 400
+    from arm.ui import json_api
+    result = json_api.abandon_job(str(job.job_id))
+    if not result.get("success"):
+        return result.get("Error") or "Couldn't stop the job.", 500
+    for item in store.load_job(job.job_id).get("attention") or []:
+        store.clear_attention(job.job_id, item.get("kind"))
+    return f"Stopped {name} and ejected the disc."
+
+
+def _delete_files(job, _name):
+    if not job.finished:
+        return "Stop the job first.", 400
+    folder = _deletable_folder(job)
+    if folder is None:
+        return "There's no output folder ARM can safely delete for this job.", 400
+    shutil.rmtree(folder)
+    app.logger.info(f"Job {job.job_id}: deleted its output folder {folder} from the web UI")
+    store.update_job(job.job_id, files_deleted=folder, attention=[])
+    from arm.automation import jellyfin
+    jellyfin.announce(None, folder)
+    return f"Deleted {folder}."
 
 
 def apply_suggestion(job, commit=True):

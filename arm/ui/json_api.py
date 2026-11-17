@@ -729,4 +729,4 @@ def _automation_summary():
         }
         if entry["confidence"] is not None or entry["attention"] or entry["finished"]:
             result[str(job.job_id)] = entry
-    return {"jobs": result, "ntfy": settings.ntfy_enabled()}
+    return {"jobs": result, "ntfy": settings.ntfy_enabled(), "start_now": settings.get("START_NOW_BUTTONS")}

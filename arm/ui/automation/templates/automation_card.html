@@ -2,6 +2,14 @@
 <div class="arm-auto-card">
     {% set finished = jobs.status in ["success", "fail"] %}
     {% set title_known = (jobs.title_manual or jobs.title or "")|lower not in ["", "none", "not identified"] %}
+    {% if jobs.status == "waiting" and start_now_buttons %}
+        <div class="arm-attn">
+            <span>ARM is waiting before it rips, so you can change the title.</span>
+            <span class="arm-attn-actions">
+                <button type="button" class="arm-btn" data-card-action="start_now">Start now</button>
+            </span>
+        </div>
+    {% endif %}
     {% for item in automation.attention or [] %}
         <div class="arm-attn {{ 'bad' if item.level == 'bad' }}">
             <span>{{ item.message }}</span>

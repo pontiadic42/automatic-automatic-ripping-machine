@@ -156,12 +156,18 @@
         }
     }
 
+    /** Settings > Automation > "Start now" buttons (on unless switched off) */
+    function startNowOn() {
+        return !(dashboard && dashboard.automation && dashboard.automation.start_now === false);
+    }
+
     function actionsHtml(job) {
         if (!window.ARM_AUTHENTICATED) {
             return "";
         }
         const id = encodeURIComponent(job.job_id);
-        let html = `<a class="arm-btn" href="titlesearch?job_id=${id}">Title search</a>` +
+        let html = job.status === "waiting" && startNowOn() ? actionButton(job.job_id, "start_now", "Start now") : "";
+        html += `<a class="arm-btn" href="titlesearch?job_id=${id}">Title search</a>` +
             `<a class="arm-btn" href="customTitle?job_id=${id}">Custom title</a>`;
         if (phaseOf(job) <= 1) {
             html += `<a class="arm-btn" href="changeparams?config_id=${id}">Rip settings</a>`;
@@ -309,7 +315,8 @@
             const id = encodeURIComponent(job.job_id);
             html += `<div class="arm-attn">
                 <span>${esc(jobTitle(job))} couldn't be identified. ARM will rip it as-is unless you set a title.</span>
-                <span class="arm-attn-actions"><a href="titlesearch?job_id=${id}">Search title</a>
+                <span class="arm-attn-actions">${window.ARM_AUTHENTICATED && startNowOn() ? actionButton(job.job_id, "start_now", "Start now") : ""}
+                <a href="titlesearch?job_id=${id}">Search title</a>
                 <a href="customTitle?job_id=${id}">Custom title</a></span></div>`;
         });
         const dayAgo = Date.now() - 24 * 3600 * 1000;

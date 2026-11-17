@@ -1027,6 +1027,18 @@ def apply_manual_overrides(job):
     return bool(updates)
 
 
+def automation_start_now(job):
+    """The user pressed "Start now" (web UI or phone): end the manual wait, keep the title"""
+    try:
+        from arm.automation import store
+        if store.load_job(job.job_id).get("start_now"):
+            store.update_job(job.job_id, start_now=False)
+            return True
+    except Exception as error:  # noqa: BLE001 - never let this end the wait by itself
+        logging.debug(f"Couldn't read the start-now flag: {error}")
+    return False
+
+
 def check_for_wait(job, wait_time=None, force=False):
     """
     Wait if we have waiting for user input updates\n\n
@@ -1050,6 +1062,9 @@ def check_for_wait(job, wait_time=None, force=False):
                 logging.debug(f"Could not re-read the job during the wait: {error}")
                 _safe_rollback()
                 continue
+            if automation_start_now(job):
+                logging.info("Start now pressed: ending the wait and keeping the current title.")
+                break
             if job.title_manual:
                 logging.info("Manual override found.  Overriding auto identification values.")
                 apply_manual_overrides(job)

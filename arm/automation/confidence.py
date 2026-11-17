@@ -361,6 +361,9 @@ def ask_user(job, result, wait_seconds):
         name = suggestion_name(suggestion)
         body += f" Maybe it's {name}?"
         actions.insert(len(actions) - 1, notify.http(f"Use {name}"[:40], notify.action_url(job.job_id, "suggest")))
+    if wait_seconds and len(actions) < 3 and settings.get("START_NOW_BUTTONS"):
+        # ntfy shows at most 3 buttons
+        actions.insert(len(actions) - 1, notify.http("Start now", notify.action_url(job.job_id, "start")))
     notify.in_app(title, body)
     notify.send(title, body, priority="high", tags=["dvd", "question"], click=notify.job_link(job.job_id),
                 icon=job.poster_url, actions=actions)

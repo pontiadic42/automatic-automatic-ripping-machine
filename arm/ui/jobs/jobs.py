@@ -41,6 +41,11 @@ def _title_base(job):
         return None
 
 
+def _automation_setting(key):
+    from arm.automation import settings
+    return settings.get(key)
+
+
 def _automation_view(job):
     """Automation record for the job page: confidence, titles, files, checks"""
     from arm.automation import organize, store
@@ -157,7 +162,8 @@ def jobdetail():
                            s=search_results,
                            manual_edit=manual_edit,
                            form=track_form,
-                           automation=_automation_view(job))
+                           automation=_automation_view(job),
+                           start_now_buttons=_automation_setting("START_NOW_BUTTONS"))
 
 
 @route_jobs.route('/jobdetailload', methods=['POST'])
