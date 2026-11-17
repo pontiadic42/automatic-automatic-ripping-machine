@@ -28,10 +28,19 @@ def _ids(job):
     return imdb_id, (str(found[1]) if found else None)
 
 
+def _tmdb_title(imdb_id):
+    """TMDb's spelling ("Fast Five"); older jobs have the label's ("Fast-Five")"""
+    from arm.automation import tmdb
+    try:
+        return tmdb.title_for_imdb(imdb_id)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def render(job, imdb_id, tmdb_id):
     series = job.video_type == "series"
     root = "tvshow" if series else "movie"
-    title = job.title_manual or job.title or ""
+    title = job.title_manual or _tmdb_title(imdb_id) or job.title or ""
     year = str(job.year or "")
     lines = ['<?xml version="1.0" encoding="utf-8" standalone="yes"?>', MARK, f"<{root}>",
              f"  <title>{escape(title)}</title>"]

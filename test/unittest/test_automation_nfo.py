@@ -30,8 +30,11 @@ class TestNfo(unittest.TestCase):
         os.makedirs(self.folder)
         self.patch = patch.dict(cfg.arm_config, {"WRITE_NFO": True, "TMM_URL": "", "TMM_API_KEY": ""})
         self.patch.start()
+        self.title = patch("arm.automation.tmdb.title_for_imdb", return_value=None)
+        self.title.start()
 
     def tearDown(self):
+        self.title.stop()
         self.patch.stop()
         self.tmp.cleanup()
 
@@ -65,6 +68,13 @@ class TestNfo(unittest.TestCase):
         self.assertIn("Fast &amp; Furious &lt;Extended&gt;", text)
         self.assertNotIn("tmdbid", text)
         self.assertIn('<uniqueid type="imdb" default="true">', text)
+
+    def test_tmdb_spelling_unless_set_by_hand(self):
+        with patch("arm.automation.tmdb.title_for_imdb", return_value="Fast Five"):
+            text = nfo.render(job(title="Fast-Five"), "tt1596343", "51497")
+            self.assertIn("<title>Fast Five</title>", text)
+            text = nfo.render(job(title="Fast-Five", title_manual="My Five"), "tt1596343", "51497")
+            self.assertIn("<title>My Five</title>", text)
 
     def test_never_overwrites_other_nfos(self):
         path = os.path.join(self.folder, "movie.nfo")
