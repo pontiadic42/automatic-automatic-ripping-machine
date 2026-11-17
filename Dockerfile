@@ -2,9 +2,9 @@
 # setup default directories and configs
 FROM automaticrippingmachine/arm-dependencies:1.8.0 AS base
 
-LABEL org.opencontainers.image.source=https://github.com/automatic-ripping-machine/automatic-ripping-machine
+LABEL org.opencontainers.image.source=https://github.com/pontiadic42/automatic-automatic-ripping-machine
 LABEL org.opencontainers.image.license=MIT
-LABEL org.opencontainers.image.description='Automatic Ripping Machine for fully automated Blu-ray, DVD and audio disc ripping.'
+LABEL org.opencontainers.image.description='A2RM: Automatic Ripping Machine fork for fully automated Blu-ray, DVD and audio disc ripping.'
 
 EXPOSE 8080
 
