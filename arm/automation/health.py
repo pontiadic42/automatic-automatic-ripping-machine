@@ -124,7 +124,19 @@ def expected_runtimes():
 
 def busy():
     from arm.models.job import Job
-    return Job.query.filter(Job.status.in_(ACTIVE)).count() > 0
+    try:
+        return Job.query.filter(Job.status.in_(ACTIVE)).count() > 0
+    finally:
+        _release_database()
+
+
+def _release_database():
+    """End the read transaction: the file checks take minutes and SQLite would stay locked for writers"""
+    try:
+        from arm.ui import db
+        db.session.rollback()
+    except Exception as error:  # noqa: BLE001
+        logging.debug(f"Couldn't end the database transaction: {error}")
 
 
 def run(root=None, decode=None, runtimes=None):
@@ -138,6 +150,7 @@ def run(root=None, decode=None, runtimes=None):
         except Exception as error:  # noqa: BLE001 - optional part
             logging.info(f"Health check: TMDb runtimes not used: {error}")
             runtimes = {}
+    _release_database()
     problems = []
     seen = collections.defaultdict(list)
     for path in files:
