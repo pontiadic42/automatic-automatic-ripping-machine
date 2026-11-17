@@ -676,3 +676,22 @@ DAILY_SUMMARY_ENABLED: true
 # Summary time.
 # 24-hour time, HH:MM.
 DAILY_SUMMARY_TIME: "08:00"
+
+# HEALTH_CHECK_DAYS
+# Library health check every (days).
+# Check every video file in the completed folder: empty or unfinalized files, files ffprobe can't read
+# or without video, movies far from TMDb's runtime, probable duplicates. Read-only; never while a disc
+# rips or transcodes. Results on Settings > Automation > Library health and in the daily summary. 0 =
+# off.
+HEALTH_CHECK_DAYS: 7
+
+# HEALTH_CHECK_TIME
+# Health check time.
+# 24-hour time, HH:MM.
+HEALTH_CHECK_TIME: "04:00"
+
+# HEALTH_CHECK_DECODE
+# Also decode a few seconds.
+# Decode 5 seconds from the middle of each file to catch damaged video (slower: a few seconds per
+# file).
+HEALTH_CHECK_DECODE: false

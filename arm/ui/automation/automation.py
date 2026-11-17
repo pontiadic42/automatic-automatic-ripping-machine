@@ -2,6 +2,7 @@
 Automation pages:
 - /automation/act       buttons in phone notifications (signed links, no login needed)
 - /automation/settings  Settings > Automation
+- /automation/health    Settings > Automation > Library health
 - /automation/frame     still frames from finished files (to tell language versions apart)
 """
 import json
@@ -351,6 +352,25 @@ def hardware():
     report["last_decode"] = _checked_text(report["last_decode"])
     return render_template("automation_hardware.html", r=report, test=_checked_text(test),
                            decode=_checked_text(decode))
+
+
+@route_automation.route('/automation/health', methods=['GET', 'POST'])
+@login_required
+def library_health():
+    """Settings > Automation > Library health: the last check's results; "Check now" runs one in the background"""
+    from arm.automation import health
+    session["page_title"] = "Library health"
+    if request.method == "POST":
+        if health.busy():
+            flash("A disc is ripping or transcoding; check again when it's done.", "warning")
+        else:
+            subprocess.Popen(["python3", "-m", "arm.automation.maintenance", "health"], cwd="/opt/arm",
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            flash("Library check started. Reload this page in a few minutes.", "success")
+        return redirect(url_for("route_automation.library_health"))
+    result = store.load_state().get("health") or {}
+    return render_template("automation_health.html", r=result, days=settings.get("HEALTH_CHECK_DAYS"),
+                           root=str(cfg.arm_config.get("COMPLETED_PATH") or ""))
 
 
 @route_automation.route('/automation/test_ntfy', methods=['POST'])

@@ -4,7 +4,8 @@ Scheduled housekeeping, run every few minutes by the host:
     docker exec -u arm -w /opt/arm arm-rippers python3 -m arm.automation.maintenance tick
 
 Each run: stuck-job watchdog and the Jellyfin match check. Once a day at the configured
-times: database backup, cleanup, daily summary. Single tasks can be run by name.
+times: database backup, cleanup, daily summary. Every HEALTH_CHECK_DAYS: library health
+check. Single tasks can be run by name.
 """
 import datetime
 import glob
@@ -19,7 +20,7 @@ import time
 import psutil
 
 import arm.config.config as cfg
-from arm.automation import confidence, jellyfin, notify, settings, store
+from arm.automation import confidence, health, jellyfin, notify, settings, store
 
 ACTIVE = ("ripping", "transcoding")
 
@@ -251,7 +252,8 @@ def summary(now=None):
     for job in Job.query.filter(Job.start_time >= now - datetime.timedelta(days=7)).all():
         for item in store.load_job(job.job_id).get("attention", []):
             attention.append(f"{job.title_manual or job.title or job.label}: {item['message']}")
-    if not jobs and not attention:
+    health_line = health.summary_line()
+    if not jobs and not attention and not health_line:
         return None
     done = [j for j in jobs if j.status == "success" and (_is_identified(j) or j.disctype == "music")]
     unknown = [j for j in jobs if j.status == "success" and j not in done]
@@ -269,6 +271,8 @@ def summary(now=None):
         lines.append(f"Failed {len(failed)}: {names(failed)}")
     if attention:
         lines.append("Needs you: " + " | ".join(attention[:5]))
+    if health_line:
+        lines.append(health_line)
     return "\n".join(lines)
 
 
@@ -304,9 +308,14 @@ def tick(now=None, local=None):
     if settings.get("DAILY_SUMMARY_ENABLED") and due("summary", settings.get("DAILY_SUMMARY_TIME"), local):
         send_summary(now)
         mark_done("summary", local)
+    try:
+        health.scheduled(local)
+    except Exception as error:  # noqa: BLE001 - must not stop the other housekeeping
+        logging.exception(f"Library health check failed: {error}")
 
 
-TASKS = {"tick": tick, "watchdog": watchdog, "backup": backup, "cleanup": cleanup, "summary": send_summary}
+TASKS = {"tick": tick, "watchdog": watchdog, "backup": backup, "cleanup": cleanup, "summary": send_summary,
+         "health": lambda: health.run()}
 
 
 def main(argv=None):

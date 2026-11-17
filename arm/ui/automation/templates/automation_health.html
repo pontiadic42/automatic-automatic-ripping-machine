@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="arm-head">
+        <h1>Library health</h1>
+        <span class="arm-faint" style="font-size:13px">Settings &gt; Automation &gt; Library health · {{ root }}</span>
+        <span class="arm-head-right"><a href="{{ url_for('route_automation.automation_settings') }}#g-housekeeping">Automation settings</a></span>
+    </div>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Last check</h2>
+        {% if r.checked %}
+            <p>{{ r.files }} files checked {{ r.checked.replace("T", " ") }} in {{ r.seconds }} s{% if r.decode %}, with a test decode{% endif %}:
+                {% if r.problems %}<span class="arm-pill bad">{{ r.problems|length }} with problems</span>{% else %}<span class="arm-pill done">all fine</span>{% endif %}</p>
+        {% else %}
+            <p class="arm-muted">No check has run yet.</p>
+        {% endif %}
+        <p class="arm-muted" style="font-size:13px">
+            {% if days > 0 %}Runs every {{ days }} day{{ "s" if days != 1 }} (HEALTH_CHECK_DAYS), never while a disc rips or transcodes.
+            {% else %}The scheduled check is off (HEALTH_CHECK_DAYS = 0).{% endif %}
+            It only reads files; nothing is moved or deleted.</p>
+        <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="arm-btn arm-btn-primary" type="submit">Check now</button>
+        </form>
+    </section>
+
+    {% if r.problems %}
+    <section class="arm-card arm-auto-group">
+        <h2>Problems</h2>
+        {% for p in r.problems %}
+            <p style="margin:0 0 8px"><code style="word-break:break-all">{{ p.path }}</code><br>
+                {% for issue in p.problems %}<span class="arm-attn" style="font-size:13px">{{ issue }}</span>{{ "<br>"|safe if not loop.last }}{% endfor %}</p>
+        {% endfor %}
+    </section>
+    {% endif %}
+{% endblock %}

@@ -185,6 +185,15 @@ SCHEMA = (
     Setting("DAILY_SUMMARY_ENABLED", True, "bool", "housekeeping", "Daily summary",
             "One notification a day: what got ripped, what's unidentified and what failed."),
     Setting("DAILY_SUMMARY_TIME", "08:00", "time", "housekeeping", "Summary time", "24-hour time, HH:MM."),
+    Setting("HEALTH_CHECK_DAYS", 7, "int", "housekeeping", "Library health check every (days)",
+            "Check every video file in the completed folder: empty or unfinalized files, files ffprobe can't "
+            "read or without video, movies far from TMDb's runtime, probable duplicates. Read-only; never "
+            "while a disc rips or transcodes. Results on Settings > Automation > Library health and in the "
+            "daily summary. 0 = off."),
+    Setting("HEALTH_CHECK_TIME", "04:00", "time", "housekeeping", "Health check time", "24-hour time, HH:MM."),
+    Setting("HEALTH_CHECK_DECODE", False, "bool", "housekeeping", "Also decode a few seconds",
+            "Decode 5 seconds from the middle of each file to catch damaged video (slower: a few seconds "
+            "per file)."),
 )
 
 BY_KEY = {setting.key: setting for setting in SCHEMA}
