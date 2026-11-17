@@ -300,3 +300,8 @@ html .bg-light, html[data-theme="dark"] .bg-light { background: var(--arm-surfac
     .arm-auto-row { grid-template-columns: 1fr; gap: 8px; }
 }
 .arm-btn.arm-btn-small { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
+
+/* Settings > Automation: multi-select language lists (C4) */
+html .custom-select.arm-auto-multi, html[data-theme="dark"] .custom-select.arm-auto-multi {
+    height: auto; background-image: none; padding-right: .75rem;
+}

@@ -466,23 +466,11 @@ DISK_SPACE_ACTION: "wait"
 # episodes, rip only what's needed and name the files accordingly.
 TITLE_ANALYSIS: true
 
-# PREFERRED_LANGUAGE
-# Preferred language.
-# ISO 639-2 code (eng, fra, deu, spa, ...). Picks the main version when a disc has the movie in
-# several languages.
-PREFERRED_LANGUAGE: "eng"
-
 # KEEP_ALTERNATE_CUTS
 # Keep other cuts.
 # Also rip theatrical / extended / director's cuts. They're saved next to the movie as versions
 # Jellyfin can switch between.
 KEEP_ALTERNATE_CUTS: true
-
-# KEEP_OTHER_LANGUAGE_VERSIONS
-# Keep other language versions.
-# Also rip the movie's versions in other languages. When ARM can't tell which version is yours, it
-# keeps them all and asks.
-KEEP_OTHER_LANGUAGE_VERSIONS: false
 
 # SKIP_DUPLICATE_TITLES
 # Skip duplicate titles.
@@ -527,6 +515,17 @@ STUCK_JOB_MINUTES: 30
 # One of: notify, abandon
 STUCK_JOB_ACTION: "abandon"
 
+# PREFERRED_LANGUAGE
+# Preferred language.
+# Picks the main version when a disc has the movie in several languages.
+PREFERRED_LANGUAGE: "eng"
+
+# KEEP_OTHER_LANGUAGE_VERSIONS
+# Keep other language versions.
+# Also rip the movie's versions in other languages. When ARM can't tell which version is yours, it
+# keeps them all and asks.
+KEEP_OTHER_LANGUAGE_VERSIONS: false
+
 # TRIM_TRACKS
 # Keep only my languages.
 # Only keep audio and subtitle tracks in the languages below (plus commentary and forced subtitles)
@@ -534,13 +533,13 @@ STUCK_JOB_ACTION: "abandon"
 TRIM_TRACKS: false
 
 # KEEP_AUDIO_LANGUAGES
-# Audio languages.
-# Comma-separated ISO 639-2 codes, e.g. eng,fra.
+# Audio languages to keep.
+# With "Keep only my languages" on. Pick one or more (Ctrl/Cmd-click).
 KEEP_AUDIO_LANGUAGES: "eng"
 
 # KEEP_SUBTITLE_LANGUAGES
-# Subtitle languages.
-# Comma-separated ISO 639-2 codes.
+# Subtitle languages to keep.
+# With "Keep only my languages" on. Pick one or more (Ctrl/Cmd-click).
 KEEP_SUBTITLE_LANGUAGES: "eng"
 
 # HW_ENCODER_CHECK

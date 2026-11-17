@@ -101,9 +101,9 @@ def job_action():
     """
     Buttons on the home page banner and the job page:
     accept (keep ARM's guessed title), start_now (end the manual wait now), cancel (stop a
-    running job), delete_files (remove a finished job's output folder), dismiss (hide a banner item), keep_version (keep one
-    language version and delete the others), keep_all (keep every language version), set_type
-    (movie <-> TV show), use_suggestion (take the title A2RM suggested).
+    running job), delete_files (remove a finished job's output folder), dismiss (hide a banner
+    item), keep_version (keep one language version and delete the others), keep_all (keep every
+    language version), set_type (movie <-> TV show), use_suggestion (take the title A2RM suggested).
     """
     job_id = request.form.get("job", type=int)
     action = request.form.get("action", "")
@@ -243,6 +243,8 @@ def _version_action(job, action):
 def _form_value(setting):
     if setting.kind == "bool":
         return setting.key in request.form
+    if setting.kind == "langs":
+        return ",".join(request.form.getlist(setting.key))
     return request.form.get(setting.key, "")
 
 
@@ -278,7 +280,9 @@ def automation_settings():
                 continue
             value = settings.get(setting.key)
             items.append({"s": setting, "value": "" if setting.kind == "secret" else value,
-                          "is_set": bool(value) if setting.kind == "secret" else None})
+                          "is_set": bool(value) if setting.kind == "secret" else None,
+                          "languages": settings.language_choices(value) if setting.kind in ("lang", "langs") else None,
+                          "selected": str(value).split(",") if setting.kind in ("lang", "langs") else None})
         groups.append({"id": group, "title": title, "fields": items})
     status = {"ntfy": settings.ntfy_enabled(), "jellyfin": settings.jellyfin_enabled(),
               "last": store.load_state()}

@@ -44,6 +44,18 @@
                                         <option value="{{ choice }}" {{ 'selected' if item.value == choice }}>{{ choice }}</option>
                                     {% endfor %}
                                 </select>
+                            {% elif s.kind == "lang" %}
+                                <select id="{{ s.key }}" name="{{ s.key }}" class="custom-select">
+                                    {% for code, name in item.languages %}
+                                        <option value="{{ code }}" {{ 'selected' if code in item.selected }}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elif s.kind == "langs" %}
+                                <select id="{{ s.key }}" name="{{ s.key }}" class="custom-select arm-auto-multi" multiple size="6">
+                                    {% for code, name in item.languages %}
+                                        <option value="{{ code }}" {{ 'selected' if code in item.selected }}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
                             {% elif s.kind == "int" %}
                                 <input type="number" id="{{ s.key }}" name="{{ s.key }}" value="{{ item.value }}" class="form-control">
                             {% elif s.kind == "time" %}

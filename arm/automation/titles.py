@@ -211,7 +211,8 @@ def _pick_version(bucket, preferred):
     """Primary title of a same-length bucket, and whether the language choice was a guess"""
     if len(bucket) == 1:
         return bucket[0], False
-    preferred_matches = [t for t in bucket if t.language == preferred]
+    preferred_matches = [t for t in bucket
+                         if settings.language_code(t.language) == settings.language_code(preferred)]
     if len(preferred_matches) == 1:
         return preferred_matches[0], False
     return min(bucket, key=lambda t: t.tid), True

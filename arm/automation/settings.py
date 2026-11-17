@@ -12,7 +12,7 @@ import dataclasses
 class Setting:
     key: str
     default: object
-    kind: str            # bool | int | str | secret | choice | time | langs
+    kind: str            # bool | int | str | secret | choice | time | lang | langs
     group: str
     label: str
     help: str
@@ -24,6 +24,7 @@ GROUPS = (
     ("identify", "Identification"),
     ("before", "Before ripping"),
     ("titles", "Titles, cuts and languages"),
+    ("languages", "Languages"),
     ("checks", "Checks and retries"),
     ("hardware", "Hardware encoding"),
     ("jellyfin", "Jellyfin"),
@@ -80,15 +81,9 @@ SCHEMA = (
     Setting("TITLE_ANALYSIS", True, "bool", "titles", "Analyse the disc's titles",
             "Work out which titles are the main feature, other cuts, language versions, duplicates, extras "
             "or TV episodes, rip only what's needed and name the files accordingly."),
-    Setting("PREFERRED_LANGUAGE", "eng", "langs", "titles", "Preferred language",
-            "ISO 639-2 code (eng, fra, deu, spa, ...). Picks the main version when a disc has the movie "
-            "in several languages."),
     Setting("KEEP_ALTERNATE_CUTS", True, "bool", "titles", "Keep other cuts",
             "Also rip theatrical / extended / director's cuts. They're saved next to the movie as versions "
             "Jellyfin can switch between."),
-    Setting("KEEP_OTHER_LANGUAGE_VERSIONS", False, "bool", "titles", "Keep other language versions",
-            "Also rip the movie's versions in other languages. When ARM can't tell which version is yours, "
-            "it keeps them all and asks."),
     Setting("SKIP_DUPLICATE_TITLES", True, "bool", "titles", "Skip duplicate titles",
             "Don't rip titles that are exact copies of another title (common on protected discs) or "
             "\"play all\" titles on TV discs."),
@@ -109,13 +104,20 @@ SCHEMA = (
             "A rip or transcode with no progress for this long counts as stuck. 0 = off."),
     Setting("STUCK_JOB_ACTION", "abandon", "choice", "checks", "When a job is stuck",
             "notify = tell you, abandon = stop it cleanly, eject and tell you.", ("notify", "abandon")),
-    Setting("TRIM_TRACKS", False, "bool", "checks", "Keep only my languages",
+
+    # Languages
+    Setting("PREFERRED_LANGUAGE", "eng", "lang", "languages", "Preferred language",
+            "Picks the main version when a disc has the movie in several languages."),
+    Setting("KEEP_OTHER_LANGUAGE_VERSIONS", False, "bool", "languages", "Keep other language versions",
+            "Also rip the movie's versions in other languages. When ARM can't tell which version is yours, "
+            "it keeps them all and asks."),
+    Setting("TRIM_TRACKS", False, "bool", "languages", "Keep only my languages",
             "Only keep audio and subtitle tracks in the languages below (plus commentary and forced subtitles) "
             "when transcoding with HandBrake."),
-    Setting("KEEP_AUDIO_LANGUAGES", "eng", "langs", "checks", "Audio languages",
-            "Comma-separated ISO 639-2 codes, e.g. eng,fra."),
-    Setting("KEEP_SUBTITLE_LANGUAGES", "eng", "langs", "checks", "Subtitle languages",
-            "Comma-separated ISO 639-2 codes."),
+    Setting("KEEP_AUDIO_LANGUAGES", "eng", "langs", "languages", "Audio languages to keep",
+            "With \"Keep only my languages\" on. Pick one or more (Ctrl/Cmd-click)."),
+    Setting("KEEP_SUBTITLE_LANGUAGES", "eng", "langs", "languages", "Subtitle languages to keep",
+            "With \"Keep only my languages\" on. Pick one or more (Ctrl/Cmd-click)."),
 
     # Hardware encoding
     Setting("HW_ENCODER_CHECK", True, "bool", "hardware", "Test the hardware encoder before ripping",
@@ -156,7 +158,55 @@ SCHEMA = (
 )
 
 BY_KEY = {setting.key: setting for setting in SCHEMA}
+
+# ISO 639-2 codes for the language drop-downs (HandBrake and MakeMKV use these)
+LANGUAGES = (
+    ("eng", "English"), ("fra", "French"), ("deu", "German"), ("spa", "Spanish"), ("ita", "Italian"),
+    ("por", "Portuguese"), ("nld", "Dutch"), ("swe", "Swedish"), ("nor", "Norwegian"), ("dan", "Danish"),
+    ("fin", "Finnish"), ("isl", "Icelandic"), ("pol", "Polish"), ("ces", "Czech"), ("slk", "Slovak"),
+    ("hun", "Hungarian"), ("ron", "Romanian"), ("bul", "Bulgarian"), ("hrv", "Croatian"), ("srp", "Serbian"),
+    ("slv", "Slovenian"), ("ell", "Greek"), ("tur", "Turkish"), ("rus", "Russian"), ("ukr", "Ukrainian"),
+    ("heb", "Hebrew"), ("ara", "Arabic"), ("fas", "Persian"), ("hin", "Hindi"), ("tam", "Tamil"),
+    ("tel", "Telugu"), ("tha", "Thai"), ("vie", "Vietnamese"), ("ind", "Indonesian"), ("msa", "Malay"),
+    ("fil", "Filipino"), ("jpn", "Japanese"), ("kor", "Korean"), ("zho", "Chinese"), ("cat", "Catalan"),
+    ("eus", "Basque"), ("glg", "Galician"), ("est", "Estonian"), ("lav", "Latvian"), ("lit", "Lithuanian"),
+    ("zxx", "No language"), ("und", "Undetermined"),
+)
+# Bibliographic codes some discs use, and their ISO 639-2/T equivalent
+LANGUAGE_ALIASES = {"fre": "fra", "ger": "deu", "dut": "nld", "cze": "ces", "slo": "slk", "rum": "ron",
+                    "gre": "ell", "per": "fas", "may": "msa", "chi": "zho", "baq": "eus", "ice": "isl"}
+
+
+def language_code(code):
+    """ISO 639-2/T for a code that may be bibliographic (MakeMKV reports fre, ger, ...)"""
+    code = str(code or "").strip().lower()
+    return LANGUAGE_ALIASES.get(code, code)
+
+
+def language_choices(value):
+    """
+    (code, "Name (code)") for a drop-down: the chosen languages first (so they're visible in a
+    multi-select), then the rest; codes in the setting that aren't in the list are kept
+    """
+    chosen = [code for code in str(value or "").split(",") if code]
+    names = dict(LANGUAGES)
+    first = [(code, f"{names[code]} ({code})" if code in names else code) for code in chosen]
+    rest = [(code, f"{name} ({code})") for code, name in LANGUAGES if code not in chosen]
+    return first + rest
+
+
 SECRET_KEYS = tuple(s.key for s in SCHEMA if s.kind == "secret")
+
+
+def _coerce_languages(setting, value):
+    if isinstance(value, (list, tuple)):
+        value = ",".join(str(part) for part in value)
+    codes = []
+    for part in str(value).split(","):
+        code = language_code(part)
+        if code and code not in codes:
+            codes.append(code)
+    return codes[0] if setting.kind == "lang" and codes else ",".join(codes)
 
 
 def coerce(setting, value):
@@ -184,8 +234,8 @@ def coerce(setting, value):
         except ValueError:
             pass
         return setting.default
-    if setting.kind == "langs":
-        return ",".join(part.strip().lower() for part in str(value).split(",") if part.strip())
+    if setting.kind in ("lang", "langs"):
+        return _coerce_languages(setting, value)
     return str(value).strip()
 
 
