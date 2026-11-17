@@ -171,6 +171,16 @@ SCHEMA = (
     Setting("JELLYFIN_VERIFY_MATCH", True, "bool", "jellyfin", "Check Jellyfin's match",
             "After the scan, check Jellyfin matched the same movie or show ARM ripped."),
 
+    Setting("WRITE_NFO", True, "bool", "jellyfin", "Write .nfo files with the TMDb id",
+            "Put a minimal movie.nfo / tvshow.nfo (title, year, TMDb and IMDb ids) in each movie or show folder "
+            "ARM files, so Jellyfin matches exactly that film. Rewritten when you change the title; NFO files "
+            "ARM didn't write are left alone."),
+    Setting("TMM_URL", "", "str", "jellyfin", "tinyMediaManager address",
+            "Optional: tinyMediaManager's HTTP API (e.g. http://tmm-host:7878) to update and scrape new items "
+            "after ARM files one. Empty = off."),
+    Setting("TMM_API_KEY", "", "secret", "jellyfin", "tinyMediaManager API key",
+            "From tinyMediaManager: Settings > General > HTTP API."),
+
     # Housekeeping
     Setting("DB_BACKUP_ENABLED", True, "bool", "housekeeping", "Back up the database daily", ""),
     Setting("DB_BACKUP_TIME", "03:00", "time", "housekeeping", "Backup time", "24-hour time, HH:MM."),

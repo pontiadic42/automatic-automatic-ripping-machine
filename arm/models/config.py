@@ -7,7 +7,7 @@ hidden_attribs = ("OMDB_API_KEY", "EMBY_USERID", "EMBY_PASSWORD",
                   "EMBY_API_KEY", "PB_KEY", "IFTTT_KEY", "PO_KEY",
                   "PO_USER_KEY", "PO_APP_KEY", "ARM_API_KEY",
                   "TMDB_API_KEY", "MAKEMKV_PERMA_KEY", "JSON_URL", "NTFY_TOKEN", "JELLYFIN_API_KEY",
-                  "_sa_instance_state")
+                  "TMM_API_KEY", "_sa_instance_state")
 HIDDEN_VALUE = "<hidden>"
 
 

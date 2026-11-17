@@ -396,4 +396,9 @@ def retitle(job, old_path, old_base):
             entry["file"] = entry["file"].replace(old_path, new_dir, 1)
         store.update_job(job.job_id, files=data["files"])
     store.clear_attention(job.job_id, "confidence")
+    try:
+        from arm.automation import nfo
+        nfo.write(job, new_dir)  # the old NFO has the old title's ids
+    except Exception as error:  # noqa: BLE001 - optional
+        logging.warning(f"Couldn't rewrite the NFO in {new_dir}: {error}")
     return new_dir
