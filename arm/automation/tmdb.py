@@ -77,6 +77,16 @@ def runtime_minutes(imdb_id):
     return runtimes[0] if runtimes else None
 
 
+def title_for_imdb(imdb_id):
+    """TMDb's own title for an IMDb id (movie title or TV show name), or None"""
+    found = find_by_imdb(imdb_id)
+    if not found:
+        return None
+    kind, tmdb_id = found
+    details = (movie_details(tmdb_id) if kind == "movie" else tv_details(tmdb_id)) or {}
+    return details.get("title") or details.get("name") or None
+
+
 def search_movies(query, limit=8):
     """Search results with their runtimes (one extra call per result)"""
     query = re.sub(r"\s+", " ", str(query or "")).strip()

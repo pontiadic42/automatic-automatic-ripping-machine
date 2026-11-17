@@ -25,6 +25,7 @@ def _safely(step, func, *args, **kwargs):
 def after_identify(job):
     """Right after identification: score it, check for an earlier rip and for disk space"""
     store.update_job(job.job_id, label=job.label)
+    _safely("title spelling", confidence.prefer_tmdb_title, job)
     result = _safely("confidence", confidence.assess, job)
     _safely("already ripped", prechecks.check_already_ripped, job)
     _safely("disk space", prechecks.check_disk_space, job)

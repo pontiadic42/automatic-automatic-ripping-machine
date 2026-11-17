@@ -323,7 +323,7 @@ def get_title(discid: str, job) -> str:
             u.database_updater(False, job)
             return "not identified"
 
-        clean_title = u.clean_for_filename(artist) + "-" + u.clean_for_filename(title)
+        clean_title = u.clean_for_filename(artist, spaces=False) + "-" + u.clean_for_filename(title, spaces=False)
         args = {
             'crc_id': crc_id,
             'title': str(artist + " " + title),

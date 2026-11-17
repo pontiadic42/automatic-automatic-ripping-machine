@@ -165,6 +165,27 @@ def earlier_identity(job):
     return None
 
 
+def prefer_tmdb_title(job):
+    """
+    Use TMDb's spelling of the identified title. The disc-ID database and the label give
+    "World-War-Z" (words joined by hyphens); TMDb has "World War Z". Only the spelling
+    changes: the title is replaced only when it has the same words as TMDb's.
+    :return: the new title, or None if nothing changed
+    """
+    from arm.ripper import utils
+    if job.title_manual or not job.imdb_id or not job.title:
+        return None
+    tmdb_title = tmdb.title_for_imdb(job.imdb_id)
+    if not tmdb_title:
+        return None
+    clean = utils.clean_for_filename(tmdb_title)
+    if clean == job.title or normalize_title(clean) != normalize_title(job.title):
+        return None
+    logging.info(f"Using TMDb's spelling of the title: '{job.title}' -> '{clean}'")
+    utils.database_updater({"title": clean, "title_auto": clean}, job)
+    return clean
+
+
 def adopt(job, title, year, imdb_id, poster_url, video_type):
     from arm.ripper import utils
     utils.database_updater({
