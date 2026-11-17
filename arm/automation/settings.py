@@ -91,6 +91,9 @@ SCHEMA = (
             "Put extras in the extras folder with readable names instead of B1_t03.mkv."),
     Setting("TV_EPISODE_MATCHING", True, "bool", "titles", "Match TV episodes",
             "Match titles to episodes using TMDb episode runtimes and name them Show S01E03.mkv."),
+    Setting("TV_SEASON_CHOICE", True, "bool", "titles", "Let me pick the season",
+            "When you pick a TV show (title search or the job page), also offer its seasons from TMDb and the "
+            "first episode on this disc. Episode naming then uses your choice instead of guessing from the label."),
 
     # Checks
     Setting("VERIFY_OUTPUT", True, "bool", "checks", "Check finished files",

@@ -75,6 +75,32 @@ def season_and_disc(*texts):
     return season, disc
 
 
+def chosen_season(job):
+    """The season (and first episode) the user picked for this TV job, or None"""
+    if not settings.get("TV_SEASON_CHOICE"):
+        return None
+    choice = store.load_job(job.job_id).get("tv_season") or {}
+    try:
+        season = int(choice.get("season"))
+    except (TypeError, ValueError):
+        return None
+    try:
+        first = int(choice.get("first_episode") or 0) or None
+    except (TypeError, ValueError):
+        first = None
+    return {"season": season, "first_episode": first}
+
+
+def save_season(job_id, season, first_episode=None):
+    """Store the user's Season / first episode choice; season None clears it"""
+    if season in (None, ""):
+        store.update_job(job_id, tv_season=None)
+        return None
+    choice = {"season": int(season), "first_episode": int(first_episode) if str(first_episode or "").strip() else None}
+    store.update_job(job_id, tv_season=choice)
+    return choice
+
+
 def match_episodes(job, episodes):
     """
     Number the episode titles (sorted by title number) using TMDb's episode runtimes.
@@ -88,6 +114,9 @@ def match_episodes(job, episodes):
         return {}, "The show isn't identified on TMDb"
     tv_id = found[1]
     season, disc = season_and_disc(job.label, job.title_manual or job.title)
+    chosen = chosen_season(job)
+    if chosen:
+        season = chosen["season"]
     if season is None:
         details = tmdb.tv_details(tv_id) or {}
         real_seasons = [s for s in details.get("seasons") or [] if s.get("season_number")]
@@ -101,7 +130,9 @@ def match_episodes(job, episodes):
         return {}, f"TMDb has no episodes for season {season}"
     key = f"tv:{tv_id}:{season}"
     progress = store.load_state().get("tv_progress", {})
-    if disc in (None, 1) and not (disc is None and key in progress):
+    if chosen and chosen.get("first_episode"):
+        start = chosen["first_episode"]
+    elif disc in (None, 1) and not (disc is None and key in progress):
         start = 1
     elif key in progress:
         start = progress[key]

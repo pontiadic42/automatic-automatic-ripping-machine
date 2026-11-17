@@ -488,6 +488,12 @@ ORGANIZE_EXTRAS: true
 # Match titles to episodes using TMDb episode runtimes and name them Show S01E03.mkv.
 TV_EPISODE_MATCHING: true
 
+# TV_SEASON_CHOICE
+# Let me pick the season.
+# When you pick a TV show (title search or the job page), also offer its seasons from TMDb and the
+# first episode on this disc. Episode naming then uses your choice instead of guessing from the label.
+TV_SEASON_CHOICE: true
+
 # VERIFY_OUTPUT
 # Check finished files.
 # Compare each finished file's length with the disc title before deleting the raw rip. If one is

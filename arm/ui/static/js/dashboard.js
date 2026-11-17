@@ -255,6 +255,9 @@
                     ` data-type="${other}"`);
             }
             html += `<a class="arm-btn" href="titlesearch?job_id=${id}">Pick another</a>`;
+            if (info.video_type === "series") {
+                html += `<a class="arm-btn" href="/jobdetail?job_id=${id}#season">Pick season</a>`;
+            }
             if (!info.finished) {
                 html += actionButton(jobId, "cancel", "Cancel job");
             } else if (info.has_files) {

@@ -115,7 +115,7 @@ def job_action():
     if action in ("set_type", "use_suggestion"):
         return _title_action(job, action)
     handler = {"accept": _accept, "start_now": _start_now, "dismiss": _dismiss, "cancel": _cancel,
-               "delete_files": _delete_files}.get(action)
+               "delete_files": _delete_files, "set_season": _set_season}.get(action)
     if handler is None:
         return {"success": False, "message": "Unknown action"}, 400
     name = job.title_manual or job.title or job.label or f"job {job_id}"
@@ -131,6 +131,22 @@ def _accept(job, name):
         return f"Keeping {name}. ARM starts ripping when its wait ends."
     store.clear_attention(job.job_id, "confidence")
     return f"Kept {name}."
+
+
+def _set_season(job, _name):
+    """TV jobs: the season (and first episode) on this disc, used by episode naming"""
+    from arm.automation import organize
+    if job.video_type != "series":
+        return "Only TV shows have seasons.", 400
+    try:
+        choice = organize.save_season(job.job_id, request.form.get("season"), request.form.get("first_episode"))
+    except ValueError:
+        return "The season and first episode must be numbers.", 400
+    if choice is None:
+        return "Season will be guessed from the disc label."
+    first = f", from episode {choice['first_episode']}" if choice["first_episode"] else ""
+    note = " Files already named keep their names." if job.finished else ""
+    return f"Season {choice['season']}{first}.{note}"
 
 
 def _start_now(job, name):

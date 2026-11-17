@@ -56,6 +56,8 @@ def _automation_view(job):
         if not data["titles"].get("ambiguous_language"):
             data["attention"] = [a for a in data.get("attention") or [] if a.get("kind") != "language"]
     data["versions"] = _versions(data)
+    if getattr(job, "video_type", None) == "series" and getattr(job, "imdb_id", None):
+        data["season_choices"] = _season_choices(job.imdb_id)
     return data
 
 
@@ -289,7 +291,20 @@ def gettitle():
         flash(constants.NO_JOB, "danger")
         raise ValidationError(constants.NO_JOB)
     dvd_info = ui_utils.metadata_selector("get_details", None, None, imdb_id)
-    return render_template('showtitle.html', results=dvd_info, job_id=job_id)
+    seasons = _season_choices(imdb_id) if (dvd_info or {}).get("Type") == "series" else []
+    return render_template('showtitle.html', results=dvd_info, job_id=job_id, seasons=seasons)
+
+
+def _season_choices(imdb_id):
+    """TMDb's seasons for the Season drop-down (Settings > Automation > Let me pick the season)"""
+    from arm.automation import settings, tmdb
+    if not settings.get("TV_SEASON_CHOICE"):
+        return []
+    try:
+        return tmdb.season_choices(imdb_id)
+    except Exception as error:  # noqa: BLE001 - the page works without it
+        app.logger.info(f"Couldn't load the seasons for {imdb_id}: {error}")
+        return []
 
 
 @route_jobs.route('/updatetitle')
@@ -334,6 +349,12 @@ def updatetitle():
     job.poster_url = job.poster_url_manual = request.args.get('poster')
 
     job.hasnicetitle = True
+    if request.args.get('type') == "series" and request.args.get('season', '').strip():
+        from arm.automation import organize
+        try:
+            organize.save_season(job.job_id, request.args.get('season'), request.args.get('first_episode'))
+        except ValueError:
+            flash("The season and first episode must be numbers.", "danger")
     notification = Notifications(f"Job: {job.job_id} was updated",
                                  f'Title: {old_title} ({old_year}) was updated to '
                                  f'{request.args.get("title")} ({request.args.get("year")})')

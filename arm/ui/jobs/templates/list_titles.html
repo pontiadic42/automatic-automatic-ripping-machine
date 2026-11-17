@@ -52,6 +52,8 @@
                             </div>
                             <div class="card-body"><strong>{{ res["Title"] }}</strong> - {{ "TV show" if res["Type"].lower() == "series" else res["Type"].capitalize() }}
                                 ({{ res["Year"] }})
+                                {% if res["Details"] %}<div class="arm-faint" style="font-size:12px">{{ res["Details"] }}</div>{% endif %}
+                                {% if res["Plot"] %}<div class="arm-faint" style="font-size:12px">{{ res["Plot"]|truncate(140) }}</div>{% endif %}
                             </div>
                         </div>
                     </div>

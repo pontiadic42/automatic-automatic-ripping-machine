@@ -87,6 +87,20 @@ def title_for_imdb(imdb_id):
     return details.get("title") or details.get("name") or None
 
 
+def season_choices(imdb_id):
+    """
+    A TV show's seasons for the Season drop-down: [{number, name, year, episodes}], specials last.
+    Empty when the IMDb id isn't a TV show on TMDb.
+    """
+    found = find_by_imdb(imdb_id)
+    if not found or found[0] != "tv":
+        return []
+    seasons = [{"number": s.get("season_number"), "name": s.get("name") or f"Season {s.get('season_number')}",
+                "year": str(s.get("air_date") or "")[:4], "episodes": s.get("episode_count") or 0}
+               for s in (tv_details(found[1]) or {}).get("seasons") or [] if s.get("season_number") is not None]
+    return sorted(seasons, key=lambda s: (s["number"] == 0, s["number"]))
+
+
 def search_movies(query, limit=8):
     """Search results with their runtimes (one extra call per result)"""
     query = re.sub(r"\s+", " ", str(query or "")).strip()

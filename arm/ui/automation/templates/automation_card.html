@@ -50,13 +50,33 @@
                 headers: token ? {"X-CSRFToken": token.content} : {},
                 body: new URLSearchParams({job: "{{ jobs.job_id }}", action: action, kind: button.dataset.kind || "",
                                            file: button.dataset.file || "",
-                                           type: button.dataset.type || ""})
+                                           type: button.dataset.type || "",
+                                           season: (document.querySelector(".arm-season-select") || {}).value || "",
+                                           first_episode: (document.querySelector(".arm-season-first") || {}).value || ""})
             }).then(function (r) { return r.json(); }).then(function (data) {
                 if (!data.success) { alert(data.message || "Something went wrong"); }
                 window.location.reload();
             }).catch(function () { button.disabled = false; });
         });
     </script>
+
+    {% if automation.season_choices %}
+        {% set chosen = automation.tv_season or {} %}
+        <div class="arm-attn" id="season">
+            <span>{% if chosen.season is not none and chosen.season != "" %}Season {{ chosen.season }}{% if chosen.first_episode %}, from episode {{ chosen.first_episode }}{% endif %}{% else %}Season ? (guessed from the disc label){% endif %}</span>
+            <span class="arm-attn-actions">
+                <select class="custom-select arm-season-select" aria-label="Season" style="width:auto">
+                    <option value="">Guess from the label</option>
+                    {% for s in automation.season_choices %}
+                        <option value="{{ s.number }}" {{ 'selected' if chosen.season == s.number }}>{{ s.name }}{% if s.year %} ({{ s.year }}, {{ s.episodes }} ep.){% endif %}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" min="1" class="form-control arm-season-first" style="width:7em" placeholder="1st ep."
+                       aria-label="First episode on this disc" value="{{ chosen.first_episode or '' }}">
+                <button type="button" class="arm-btn" data-card-action="set_season">Save season</button>
+            </span>
+        </div>
+    {% endif %}
 
     {% if automation.confidence %}
         {% set c = automation.confidence %}

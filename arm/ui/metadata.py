@@ -234,7 +234,10 @@ def tmdb_process_results(poster_base, return_results, search_results, media_type
         app.logger.debug(result)
         result['poster_path'] = result['poster_path'] if result['poster_path'] is not None else None
         result['release_date'] = '0000-00-00' if 'release_date' not in result else result['release_date']
-        result['imdbID'] = tmdb_get_imdb(result['id'], media_type)
+        summary = tv_summary(result['id']) if media_type == "series" else {}
+        result['imdbID'] = summary.get("imdb_id") or tmdb_get_imdb(result['id'], media_type)
+        # TV shows with the same name (Doctor Who 1963, 2005, 2023): years, seasons, network
+        result['Details'] = summary.get("details", "")
         result['Year'] = re.sub(TMDB_YEAR_REGEX, "", result['first_air_date']) if 'first_air_date' in result else \
             re.sub(TMDB_YEAR_REGEX, "", result['release_date'])
         result['Title'] = result['title'] if 'title' in result else result['name']  # This isn't great
@@ -244,6 +247,36 @@ def tmdb_process_results(poster_base, return_results, search_results, media_type
         result["Plot"] = result['overview']
     return_results['Search'] = search_results['results']
     return return_results
+
+
+def tv_summary(tmdb_id):
+    """
+    One TV show's details for telling same-named shows apart:
+    {"imdb_id", "details": "2005-2022 · 13 seasons · BBC One · GB"}. Empty on any error.
+    """
+    try:
+        response = requests.get(f"https://api.themoviedb.org/3/tv/{int(tmdb_id)}",
+                                params={"api_key": cfg.arm_config['TMDB_API_KEY'],
+                                        "append_to_response": "external_ids"}, timeout=15)
+        data = json.loads(response.text)
+    except (requests.RequestException, ValueError, TypeError) as error:
+        app.logger.debug(f"TMDb TV details failed for {tmdb_id}: {error}")
+        return {}
+    if not isinstance(data, dict) or 'status_code' in data:
+        return {}
+    first, last = str(data.get("first_air_date") or "")[:4], str(data.get("last_air_date") or "")[:4]
+    if first and data.get("status") in ("Returning Series", "In Production"):
+        years = f"{first}-"
+    elif first and last and last != first:
+        years = f"{first}-{last}"
+    else:
+        years = first
+    seasons = data.get("number_of_seasons")
+    networks = ", ".join(n.get("name", "") for n in (data.get("networks") or [])[:2] if n.get("name"))
+    parts = [years, f"{seasons} season{'s' if seasons != 1 else ''}" if seasons else "", networks,
+             ", ".join((data.get("origin_country") or [])[:2])]
+    return {"imdb_id": (data.get("external_ids") or {}).get("imdb_id"),
+            "details": " · ".join(part for part in parts if part)}
 
 
 def tmdb_get_imdb(tmdb_id, media_type=None):
