@@ -5,8 +5,8 @@ than failing the rip (except where stopping is the point: skip, no disk space).
 """
 import logging
 
-from arm.automation import (confidence, hwcheck, jellyfin, notify, organize, prechecks, settings, store, titles,
-                            unidentified)
+from arm.automation import (confidence, hwcheck, jellyfin, mkvcheck, notify, organize, prechecks, settings, store,
+                            titles, unidentified)
 
 JobSkipped = prechecks.JobSkipped
 
@@ -63,6 +63,13 @@ def unidentified_directory(job):
 
 def drop_empty_folder(folder):
     _safely("remove empty folder", unidentified.remove_if_empty, folder)
+
+
+def unfinalized_files(folder):
+    """MakeMKV output that isn't a readable Matroska file (CHECK_UNFINALIZED)"""
+    if not settings.get("CHECK_UNFINALIZED"):
+        return []
+    return _safely("check MakeMKV files", mkvcheck.unfinalized_files, folder) or []
 
 
 def after_track_info(job, raw):

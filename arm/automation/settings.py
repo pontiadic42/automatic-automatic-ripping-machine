@@ -107,6 +107,10 @@ SCHEMA = (
             "How much shorter a file may be than its title before it counts as cut off."),
     Setting("READ_ERROR_RETRIES", 1, "int", "checks", "Retries after a MakeMKV failure",
             "Retry the rip this many times. If it still fails you get \"clean the disc or try the other drive\"."),
+    Setting("CHECK_UNFINALIZED", True, "bool", "checks", "Check MakeMKV's files are complete",
+            "After each MakeMKV rip, check every .mkv starts with a Matroska header. An interrupted MakeMKV leaves "
+            "\"not properly finalized\" files nothing can open: they're renamed to .unfinalized (kept, repairable "
+            "with scripts/a2rm-repair-mkv.py) and the rip is retried or fails with that reason."),
     Setting("STUCK_JOB_MINUTES", 30, "int", "checks", "Stuck after (minutes)",
             "A rip or transcode with no progress for this long counts as stuck. 0 = off."),
     Setting("STUCK_JOB_ACTION", "abandon", "choice", "checks", "When a job is stuck",

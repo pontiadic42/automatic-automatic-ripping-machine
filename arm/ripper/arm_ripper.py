@@ -128,6 +128,27 @@ def makemkv_expired(error):
     return getattr(error, "returncode", None) == 253 or "too old" in text or "registration key" in text
 
 
+def check_finalized(raw_path):
+    """
+    An interrupted MakeMKV leaves files that start with "This file was not properly finalized":
+    nothing can open them. Rename them to .unfinalized (kept for repair) and treat it as a
+    MakeMKV failure, so the rip is retried (READ_ERROR_RETRIES) or fails with the reason.
+    :return: raw_path when every file is fine
+    """
+    bad = automation_hooks.unfinalized_files(raw_path)
+    if not bad:
+        return raw_path
+    for path in bad:
+        try:
+            os.replace(path, path + ".unfinalized")
+        except OSError as error:
+            logging.warning(f"Couldn't rename {path}: {error}")
+    names = ", ".join(os.path.basename(path) for path in bad)
+    raise makemkv.MakeMkvRuntimeError(
+        1, ["makemkvcon"], output=f"MakeMKV left {len(bad)} file(s) unfinalized ({names}); kept as .unfinalized, "
+                                  "repairable with scripts/a2rm-repair-mkv.py")
+
+
 def rip_with_retries(job):
     """
     Run MakeMKV, retrying READ_ERROR_RETRIES times when it fails (scratched or dirty discs
@@ -139,7 +160,7 @@ def rip_with_retries(job):
     attempts = 1 + max(0, automation_settings.get("READ_ERROR_RETRIES"))
     for attempt in range(1, attempts + 1):
         try:
-            return makemkv.makemkv(job)
+            return check_finalized(makemkv.makemkv(job))
         except makemkv.MakeMkvRuntimeError as mkv_error:
             if makemkv_expired(mkv_error):
                 raise utils.RipperException(
