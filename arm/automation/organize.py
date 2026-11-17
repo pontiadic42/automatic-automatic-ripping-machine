@@ -178,22 +178,22 @@ def _match_tmdb_episodes(job, episodes):
 
 
 def destination(job, decision, final_dir, episode=None, ext=".mkv"):
-    from arm.ripper import utils
-    base = safe_name(utils.fix_job_title(job))
+    """Where a title's file goes; names follow MOVIE/EPISODE_NAME_PATTERN and SEASON_FOLDER_PATTERN (C29)"""
+    from arm.automation import naming
     extras = os.path.join(final_dir, str(cfg.arm_config.get("EXTRAS_SUB") or "extras"))
     role = decision["role"]
     if job.video_type == "series":
         show = safe_name(job.title_manual or job.title)
         if role == "episode" and episode:
             season, number = episode
-            return os.path.join(final_dir, f"Season {season:02d}", f"{show} S{season:02d}E{number:02d}{ext}")
+            return os.path.join(final_dir, naming.season_folder(season), naming.episode_name(job, season, number) + ext)
         if role == "episode":
             return os.path.join(final_dir, f"{show} - title {decision['tid']}{ext}")
         return os.path.join(extras, safe_name(decision["label"] or f"Title {decision['tid']}") + ext)
     if role == "main":
-        return os.path.join(final_dir, f"{base}{ext}")
+        return os.path.join(final_dir, naming.movie_name(job) + ext)
     if role in ("cut", "language", "feature"):
-        return os.path.join(final_dir, f"{base} - {safe_name(decision['label'])}{ext}")
+        return os.path.join(final_dir, naming.movie_name(job, safe_name(decision["label"])) + ext)
     if settings.get("ORGANIZE_EXTRAS"):
         return os.path.join(extras, safe_name(decision["label"] or f"Title {decision['tid']}") + ext)
     return None  # keep MakeMKV's name in the extras folder
@@ -365,6 +365,27 @@ def report_problems(job, problems, kept_paths):
                 click=notify.job_link(job.job_id))
 
 
+def _rename_to_pattern(job, data):
+    """After a retitle: give the movie's main file and versions their names from MOVIE_NAME_PATTERN"""
+    if job.video_type != "movie":
+        return 0
+    decisions = {d["tid"]: d for d in (data.get("titles") or {}).get("titles", [])}
+    renamed = 0
+    for entry in data["files"]:
+        decision = decisions.get(entry.get("tid"))
+        path = entry.get("file") or ""
+        if not decision or entry.get("role") not in ("main", "cut", "language", "feature") or \
+                not os.path.isfile(path):
+            continue
+        target = destination(job, decision, os.path.dirname(path), None, os.path.splitext(path)[1])
+        if target and os.path.normpath(target) != os.path.normpath(path):
+            target = unique_path(target)
+            os.rename(path, target)
+            entry["file"] = target
+            renamed += 1
+    return renamed
+
+
 def retitle(job, old_path, old_base):
     """
     The title of a finished job changed: move its folder to the new name (and to the
@@ -382,19 +403,22 @@ def retitle(job, old_path, old_base):
         new_dir = unique_path(new_dir)
     os.makedirs(os.path.dirname(new_dir), exist_ok=True)
     shutil.move(old_path, new_dir)
-    renamed = 0
+    moves = {}
     for root, _dirs, files in os.walk(new_dir):
         for name in files:
             if old_base and old_base != new_base and name.startswith(old_base) and name != new_base:
                 target = unique_path(os.path.join(root, new_base + name[len(old_base):]))
                 os.rename(os.path.join(root, name), target)
-                renamed += 1
-    logging.info(f"Retitled job {job.job_id}: moved {old_path} to {new_dir}, renamed {renamed} file(s)")
+                moves[os.path.join(root, name)] = target
+    renamed = len(moves)
     data = store.load_job(job.job_id)
     if data.get("files"):
         for entry in data["files"]:
-            entry["file"] = entry["file"].replace(old_path, new_dir, 1)
+            moved = entry["file"].replace(old_path, new_dir, 1)
+            entry["file"] = moves.get(moved, moved)
+        renamed += _rename_to_pattern(job, data)
         store.update_job(job.job_id, files=data["files"])
+    logging.info(f"Retitled job {job.job_id}: moved {old_path} to {new_dir}, renamed {renamed} file(s)")
     store.clear_attention(job.job_id, "confidence")
     try:
         from arm.automation import nfo

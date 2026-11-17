@@ -78,4 +78,21 @@
         </div>
     </form>
     <script type="application/javascript">$(function () { activeTab("armsettings"); });</script>
+    <script type="application/javascript">
+        // Naming patterns: show an example name while typing (C29)
+        $(function () {
+            ["MOVIE_NAME_PATTERN", "EPISODE_NAME_PATTERN", "SEASON_FOLDER_PATTERN"].forEach(function (key) {
+                var input = $("#" + key);
+                if (!input.length) { return; }
+                var out = $('<div class="arm-faint" style="font-size:12px; margin-top:3px"></div>').insertAfter(input);
+                var timer = null;
+                function update() {
+                    $.getJSON("{{ url_for('route_automation.name_preview') }}", {key: key, pattern: input.val()})
+                        .done(function (data) { out.text("Example: " + data.name); });
+                }
+                input.on("input", function () { clearTimeout(timer); timer = setTimeout(update, 300); });
+                update();
+            });
+        });
+    </script>
 {% endblock %}

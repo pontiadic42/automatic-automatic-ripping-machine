@@ -105,6 +105,14 @@ SCHEMA = (
             "\"play all\" titles on TV discs."),
     Setting("ORGANIZE_EXTRAS", True, "bool", "titles", "Name extras",
             "Put extras in the extras folder with readable names instead of B1_t03.mkv."),
+    Setting("MOVIE_NAME_PATTERN", "{Title} ({Year})", "str", "titles", "Movie file name",
+            "Name of the movie file. Tokens: {Title} {Year} {Edition} {ImdbId}. Other cuts and language "
+            "versions add \" - {Edition}\" unless the pattern has {Edition}. The folder stays Title (Year)."),
+    Setting("EPISODE_NAME_PATTERN", "{Show} S{Season:00}E{Episode:00}", "str", "titles", "Episode file name",
+            "Name of TV episode files. Tokens: {Show} {Year} {Season} {Episode} {EpisodeTitle} (from TMDb) "
+            "{ImdbId}; {Season:00} pads to 2 digits."),
+    Setting("SEASON_FOLDER_PATTERN", "Season {Season:00}", "str", "titles", "Season folder name",
+            "Folder for each season's episodes inside the show folder. Token: {Season}."),
     Setting("TV_EPISODE_MATCHING", True, "bool", "titles", "Match TV episodes",
             "Match titles to episodes using TMDb episode runtimes and name them Show S01E03.mkv."),
     Setting("TV_SEASON_CHOICE", True, "bool", "titles", "Let me pick the season",

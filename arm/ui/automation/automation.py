@@ -373,6 +373,18 @@ def library_health():
                            root=str(cfg.arm_config.get("COMPLETED_PATH") or ""))
 
 
+@route_automation.route('/automation/name_preview')
+@login_required
+def name_preview():
+    """Settings > Automation: sample file name for a naming pattern (C29)"""
+    from arm.automation import naming
+    kinds = {"MOVIE_NAME_PATTERN": "movie", "EPISODE_NAME_PATTERN": "episode", "SEASON_FOLDER_PATTERN": "season"}
+    kind = kinds.get(request.args.get("key", ""))
+    if not kind:
+        return {"name": ""}, 400
+    return {"name": naming.preview(kind, request.args.get("pattern", "")[:200])}
+
+
 @route_automation.route('/automation/test_ntfy', methods=['POST'])
 @login_required
 def test_ntfy():
