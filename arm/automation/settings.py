@@ -135,6 +135,13 @@ SCHEMA = (
             "When HB_ARGS_DVD / HB_ARGS_BD ask for a GPU encoder (qsv_h264, nvenc_h265, ...), run a 3-second test "
             "encode before ripping (cached for 10 minutes) and warn you if it fails. HandBrake's own "
             "\"qsv is available\" message can't be trusted."),
+    Setting("RECORD_ENCODER", True, "bool", "hardware", "Show the encoder each job used",
+            "Read HandBrake's output after each transcode and show the encoder (e.g. QSV H.264 (GPU) or x264 (CPU)) "
+            "and average speed on the job page and the library, with a warning when HB_ARGS asked for the GPU but "
+            "HandBrake used the CPU."),
+    Setting("HW_DECODE_BLURAY", False, "bool", "hardware", "Decode Blu-rays on the GPU",
+            "Add HandBrake's QSV decoding option to Blu-ray transcodes that use a QSV encoder, but only after the "
+            "decode test on the Hardware check page passed (within a week). Check one real disc's quality first."),
     Setting("HW_ENCODER_FALLBACK", True, "bool", "hardware", "Fall back to the CPU",
             "If the hardware encoder fails (the test before ripping, or HandBrake itself), transcode on the CPU "
             "with x264/x265 instead of failing the job after the rip. Slower, and you're told."),

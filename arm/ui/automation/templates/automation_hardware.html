@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="arm-head">
+        <h1>Hardware check</h1>
+        <span class="arm-faint" style="font-size:13px">Settings &gt; Automation &gt; Hardware check · GPU encoding for HandBrake</span>
+        <span class="arm-head-right"><a href="{{ url_for('route_automation.automation_settings') }}#g-hardware">Automation settings</a></span>
+    </div>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Test encode</h2>
+        {% set t = test or r.last_test %}
+        {% if r.test_encoder %}
+            <p class="arm-muted" style="font-size:13px">A 3-second test clip encoded with <code>{{ r.test_encoder }}</code> as ARM's
+                own user. HandBrake's "qsv: is available" message is printed even without a GPU, so only this counts.</p>
+            {% if t %}
+                <p>{% if t.ok %}<span class="arm-pill done">Passed</span> {{ t.encoder }} works ({{ t.seconds }} s){% else %}
+                    <span class="arm-pill bad">Failed</span> <b>{{ t.cause }}</b><br><span class="arm-muted">Fix: {{ t.fix }}</span>{% endif %}
+                    <span class="arm-faint" style="font-size:12px"> · checked {{ t.checked_text }}</span></p>
+                {% if not t.ok and t.log %}<details><summary>HandBrake output</summary><pre style="font-size:11px; white-space:pre-wrap">{{ t.log }}</pre></details>{% endif %}
+            {% else %}
+                <p class="arm-muted">Not tested yet.</p>
+            {% endif %}
+            <form method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="test_encode">
+                <button class="arm-btn arm-btn-primary" type="submit">Run the test encode</button>
+            </form>
+        {% else %}
+            <p class="arm-muted">No GPU encoder to test: HB_ARGS don't ask for one and no render device is passed in.
+                HandBrake uses the CPU. See docs/quicksync.md to set up Intel QuickSync.</p>
+        {% endif %}
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>What ARM asks for</h2>
+        {% for key, s in r.hb_args.items() %}
+            <p style="margin:0 0 4px"><code>{{ key }}</code>: <span class="arm-pill {{ 'done' if s.hardware else '' }}">{{ s.encoder }}</span>
+                <span class="arm-faint" style="font-size:12px">{{ s.args }}</span></p>
+        {% endfor %}
+        {% if r.nodes and not (r.hb_args.HB_ARGS_DVD.hardware or r.hb_args.HB_ARGS_BD.hardware) %}
+            <p class="arm-attn">A GPU is passed in, but HB_ARGS have no <code>-e qsv_h264</code>, so HandBrake uses the CPU.</p>
+        {% endif %}
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>GPU and permissions</h2>
+        {% for g in r.gpus %}<p style="margin:0">{{ g.card }}: {{ g.vendor }} {{ g.pci_id }}{% if g.driver %} · driver {{ g.driver }}{% endif %}</p>{% endfor %}
+        {% if not r.gpus %}<p class="arm-muted">No GPU visible in /sys/class/drm.</p>{% endif %}
+        {% for n in r.nodes %}
+            <p style="margin:4px 0">{{ n.path }} (group {{ n.gid }}):
+                {% if n.usable %}<span class="arm-pill done">ARM's user can open it</span>{% else %}<span class="arm-pill bad">ARM's user can't open it</span>
+                <span class="arm-muted">{{ n.fix }}</span>{% endif %}</p>
+        {% endfor %}
+        {% if not r.nodes %}<p class="arm-attn">No /dev/dri/renderD* in the container. Add <code>--device /dev/dri/renderD128</code>.</p>{% endif %}
+        {% if r.vainfo %}
+            <p style="margin:4px 0">VA-API: {% if r.vainfo.ok %}<span class="arm-pill done">{{ r.vainfo.driver or "driver loaded" }}</span>{% else %}
+                <span class="arm-pill bad">driver doesn't load</span> <span class="arm-muted">{{ r.vainfo.error }}</span>{% endif %}</p>
+            {% if r.vainfo.ok %}<p class="arm-muted" style="font-size:13px; margin:0">Hardware encode:
+                {% for codec, yes in r.vainfo.codecs.items() %}{{ codec }} {{ "yes" if yes else "no" }}{{ " · " if not loop.last }}{% endfor %}</p>{% endif %}
+        {% endif %}
+        <p class="arm-muted" style="font-size:13px; margin:4px 0 0">{{ r.handbrake.version }} · encoders: {{ r.handbrake.encoders|join(", ") }}</p>
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Encoder presets for this machine</h2>
+        <p class="arm-muted" style="font-size:13px">Suggestions only: copy the options into HB_ARGS_DVD / HB_ARGS_BD on the
+            <a href="/settings">Settings</a> page if you want them.</p>
+        {% for s in r.suggestions %}
+            <p style="margin:0 0 6px"><b>{{ s.title }}</b>{% if s.args %}: <code>{{ s.args }}</code>{% endif %}<br>
+                <span class="arm-muted" style="font-size:13px">{{ s.note }}</span></p>
+        {% endfor %}
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Hardware decoding for Blu-rays</h2>
+        {% set d = decode or r.last_decode %}
+        <p class="arm-muted" style="font-size:13px">Decoding Blu-ray video on the GPU nearly doubled transcode speed with
+            HandBrake 1.9.2 (159 → 295 fps), but HandBrake 1.11.2's QSV decoding failed in testing. With "Decode Blu-rays on
+            the GPU" on (Settings > Automation > Hardware encoding, off by default) A2RM adds <code>{{ r.decode_flag }}</code>
+            to Blu-ray transcodes only after this test has passed here. Check the quality of one real disc before relying on it.</p>
+        {% if d %}
+            <p>{% if d.ok %}<span class="arm-pill done">Passed</span>{% else %}<span class="arm-pill bad">Failed</span> {{ d.cause }}{% endif %}
+                <code>{{ d.flag }}</code> <span class="arm-faint" style="font-size:12px"> · checked {{ d.checked_text }}</span></p>
+            {% if not d.ok and d.log %}<details><summary>HandBrake output</summary><pre style="font-size:11px; white-space:pre-wrap">{{ d.log }}</pre></details>{% endif %}
+        {% endif %}
+        <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="test_decode">
+            <button class="arm-btn" type="submit">Run the decode test</button>
+        </form>
+    </section>
+    <script type="application/javascript">$(function () { activeTab("armsettings"); });</script>
+{% endblock %}

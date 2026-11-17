@@ -253,3 +253,69 @@ def record_runtime_fallback(job, command):
     logging.warning(message)
     notify.in_app(f"{job.title}: hardware encoding failed", message)
     notify.send(f"{job.title}: hardware encoding failed", message, priority="default", tags=["warning"])
+
+
+# HandBrake's job summary: "+ encoder: H.264 (Intel QSV)" (video and audio), and
+# "work: average encoding speed for job is 1255.561035 fps" (0 for the scan pass)
+ENCODER_LINE = re.compile(r"\+ encoder: ((?:H\.264|H\.265|HEVC|AV1|MPEG-[24]|VP[89]|Theora)[^\n]*)")
+SPEED_LINE = re.compile(r"average encoding speed for job is ([0-9.]+) fps")
+ENCODER_NAMES = (
+    (r"Intel (QSV|Media SDK)", "QSV", True), (r"NVENC", "NVENC", True), (r"(AMD )?(VCE|VCN|AMF)", "VCE", True),
+    (r"VideoToolbox", "VideoToolbox", True), (r"libx264|x264", "x264", False), (r"libx265|x265", "x265", False),
+    (r"SVT-AV1", "SVT-AV1", False), (r"libvpx", "VP9", False),
+)
+
+
+def describe_encoder(text):
+    """"H.264 (Intel QSV)" -> ("QSV H.264 (GPU)", True)"""
+    codec = text.split(" (")[0].strip()
+    for pattern, name, gpu in ENCODER_NAMES:
+        if re.search(pattern, text, re.IGNORECASE):
+            if name in ("x264", "x265", "SVT-AV1", "VP9"):
+                return f"{name} (CPU)", False
+            return f"{name} {codec} (GPU)", gpu
+    return text.strip(), False
+
+
+def encoder_used(log_text):
+    """
+    What HandBrake really used, from its output in the job log.
+    :return: {"label", "gpu", "encoders", "fps"} or None when there was no HandBrake run
+    """
+    found = []
+    for match in ENCODER_LINE.finditer(log_text or ""):
+        label, gpu = describe_encoder(match.group(1))
+        if (label, gpu) not in found:
+            found.append((label, gpu))
+    if not found:
+        return None
+    speeds = [float(value) for value in SPEED_LINE.findall(log_text or "") if float(value) > 0]
+    return {"label": " + ".join(label for label, _gpu in found), "gpu": any(gpu for _label, gpu in found),
+            "all_gpu": all(gpu for _label, gpu in found), "encoders": [label for label, _gpu in found],
+            "fps": round(sum(speeds) / len(speeds)) if speeds else None}
+
+
+def record_encoder(job, logfile=None):
+    """After the transcode: store the encoder the job used, and warn when it isn't the one HB_ARGS asked for"""
+    if not settings.get("RECORD_ENCODER") or job.disctype not in ("dvd", "bluray"):
+        return None
+    path = logfile or os.path.join(str(cfg.arm_config.get("LOGPATH") or ""), str(job.logfile or ""))
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            used = encoder_used(handle.read())
+    except OSError as error:
+        logging.debug(f"Couldn't read the job log for the encoder: {error}")
+        return None
+    if used is None:
+        return None
+    asked = encoder_in(job_args(job))
+    used["asked"] = asked
+    used["mismatch"] = bool(is_hardware(asked) and not used["all_gpu"])
+    store.update_job(job.job_id, encoder=used)
+    logging.info(f"Transcoded with {used['label']}" + (f", {used['fps']} fps on average" if used["fps"] else ""))
+    if used["mismatch"]:
+        from arm.automation import notify
+        notify.in_app(f"{job.title}: not transcoded on the GPU",
+                      f"HB_ARGS ask for {asked}, but HandBrake used {used['label']}. "
+                      "Run Settings > Automation > Hardware check to see why.")
+    return used

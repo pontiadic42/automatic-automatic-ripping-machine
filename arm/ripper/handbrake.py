@@ -233,6 +233,9 @@ def correct_hb_settings(job):
     elif job.disctype == "bluray":
         hb_args = job.config.HB_ARGS_BD
         hb_preset = job.config.HB_PRESET_BD
+    # Optional GPU decoding for Blu-rays (only after a passing decode test)
+    from arm.automation import hwreport
+    hb_args = hwreport.bluray_decode_args(job, hb_args)
     # Hardware encoder failed its test before the rip: use the CPU for this job
     hb_args = hwcheck.adjust_args(job, hb_args)
     return hb_args, hb_preset

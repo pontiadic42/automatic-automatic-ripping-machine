@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 
 from flask import Blueprint, Response, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
@@ -324,6 +325,32 @@ def automation_settings():
     status = {"ntfy": settings.ntfy_enabled(), "jellyfin": settings.jellyfin_enabled(),
               "last": store.load_state()}
     return render_template("automation_settings.html", groups=groups, status=status)
+
+
+def _checked_text(result):
+    if result and result.get("checked"):
+        result = dict(result, checked_text=time.strftime("%Y-%m-%d %H:%M", time.localtime(result["checked"])))
+    return result
+
+
+@route_automation.route('/automation/hardware', methods=['GET', 'POST'])
+@login_required
+def hardware():
+    """Settings > Automation > Hardware check (GPU, permissions, VA-API, HandBrake, test encode)"""
+    from arm.automation import hwcheck, hwreport
+    session["page_title"] = "Hardware check"
+    test = decode = None
+    if request.method == "POST":
+        report = hwreport.report()
+        if request.form.get("action") == "test_encode" and report["test_encoder"]:
+            test = hwcheck.cached_test(report["test_encoder"], fresh=True)
+        elif request.form.get("action") == "test_decode":
+            decode = hwreport.decode_test()
+    report = hwreport.report()
+    report["last_test"] = _checked_text(report["last_test"])
+    report["last_decode"] = _checked_text(report["last_decode"])
+    return render_template("automation_hardware.html", r=report, test=_checked_text(test),
+                           decode=_checked_text(decode))
 
 
 @route_automation.route('/automation/test_ntfy', methods=['POST'])

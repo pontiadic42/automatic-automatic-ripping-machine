@@ -656,7 +656,21 @@ def _job_summary(job):
         # Stored without a time zone in the server's local time; send the offset so browsers don't misread it
         'stop_time': job.stop_time.astimezone().isoformat() if job.stop_time else None,
         'identified': _is_identified(job) or job.disctype == "music",
+        'encoder': _encoder_badge(job.job_id),
     }
+
+
+def _encoder_badge(job_id):
+    """"GPU" / "CPU" for the library, from the encoder recorded after the transcode"""
+    try:
+        from arm.automation import store
+        encoder = store.load_job(job_id).get("encoder") or {}
+    except Exception:  # noqa: BLE001
+        return None
+    if not encoder:
+        return None
+    return {"text": "GPU" if encoder.get("gpu") else "CPU", "title": encoder.get("label", ""),
+            "warn": bool(encoder.get("mismatch"))}
 
 
 def get_dashboard():

@@ -149,7 +149,8 @@ def check_main(job, final_directory):
 
 
 def after_move(job, final_directory, problems, raw_paths):
-    """After the files are in place: report problems, tell Jellyfin"""
+    """After the files are in place: record the encoder, report problems, tell Jellyfin"""
+    _safely("encoder used", hwcheck.record_encoder, job)
     if problems:
         _safely("report", organize.report_problems, job, problems, raw_paths)
     _safely("jellyfin", jellyfin.announce, job, final_directory)

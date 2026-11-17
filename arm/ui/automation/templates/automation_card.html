@@ -124,6 +124,17 @@
         </div>
     {% endif %}
 
+    {% if automation.encoder %}
+        {% set e = automation.encoder %}
+        <p class="arm-muted" style="font-size:13px">
+            Transcoded with <span class="arm-pill {{ 'done' if e.gpu else '' }}">{{ e.label }}</span>
+            {% if e.fps %} · {{ "{:,}".format(e.fps) }} fps on average{% endif %}
+            {% if e.mismatch %}<span class="arm-pill warn">HB_ARGS asked for {{ e.asked }}</span>
+                <a href="/automation/hardware">Hardware check</a>{% endif %}
+            {% if automation.hw_fallback %}<span class="arm-pill warn">CPU fallback: {{ automation.hw_fallback.reason }}</span>{% endif %}
+        </p>
+    {% endif %}
+
     {% if automation.already_ripped %}
         <p class="arm-muted" style="font-size:13px">
             Same disc as <a href="/jobdetail?job_id={{ automation.already_ripped.job_id }}">job {{ automation.already_ripped.job_id }}</a>

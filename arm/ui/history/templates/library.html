@@ -35,6 +35,8 @@
                         {%- if job.year and job.year not in ["None", "0000"] %}{{ job.year }} · {% endif -%}
                         {%- if job.disctype == "music" %}Music{% elif job.video_type == "series" %}TV{% elif job.video_type == "movie" %}Movie{% else %}{{ job.disctype|upper }}{% endif -%}
                         {%- if job.stop_time %} · {{ job.stop_time[:10] }}{% endif -%}
+                        {%- if job.encoder %} · <span class="arm-pill {{ 'warn' if job.encoder.warn }}" title="{{ job.encoder.title }}"
+                            style="font-size:10px; padding:0 5px">{{ job.encoder.text }}</span>{% endif -%}
                     </p>
                 </a>
             {% endfor %}

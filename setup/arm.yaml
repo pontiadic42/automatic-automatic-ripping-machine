@@ -570,6 +570,19 @@ KEEP_SUBTITLE_LANGUAGES: "eng"
 # available" message can't be trusted.
 HW_ENCODER_CHECK: true
 
+# RECORD_ENCODER
+# Show the encoder each job used.
+# Read HandBrake's output after each transcode and show the encoder (e.g. QSV H.264 (GPU) or x264
+# (CPU)) and average speed on the job page and the library, with a warning when HB_ARGS asked for the
+# GPU but HandBrake used the CPU.
+RECORD_ENCODER: true
+
+# HW_DECODE_BLURAY
+# Decode Blu-rays on the GPU.
+# Add HandBrake's QSV decoding option to Blu-ray transcodes that use a QSV encoder, but only after the
+# decode test on the Hardware check page passed (within a week). Check one real disc's quality first.
+HW_DECODE_BLURAY: false
+
 # HW_ENCODER_FALLBACK
 # Fall back to the CPU.
 # If the hardware encoder fails (the test before ripping, or HandBrake itself), transcode on the CPU
