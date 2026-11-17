@@ -671,10 +671,30 @@ def arm_setup(arm_log: Logger) -> None:
             arm_log.critical(f"Can't write to folder: {folder}")
 
 
+def _is_locked(error):
+    """True for SQLite "database is locked" errors, also when wrapped (PendingRollbackError)"""
+    return "locked" in str(error) or "locked" in str(getattr(error, "orig", "") or "")
+
+
+def _safe_rollback():
+    """Roll the session back so it can be used again; never raises"""
+    try:
+        db.session.rollback()
+    except Exception as error:  # noqa: BLE001 - a broken rollback must not hide the original problem
+        logging.debug(f"rollback failed: {error}")
+
+
 def database_updater(args, job, wait_time=90):
     """
     Try to update our db for x seconds and handle it nicely if we can't
-    If args isn't a dict assume we are wanting a rollback\n
+    If args isn't a dict assume we are wanting a rollback
+
+
+    After a failed commit SQLAlchemy refuses every further statement until the session
+    is rolled back (PendingRollbackError). So each failed try rolls back and sets the
+    values again. When the database stays locked, the values stay set on the job (not
+    committed) and the session is left usable, so the next commit saves them and a
+    lock can't kill the job.
 
     :param args: This needs to be a Dict with the key being the job.method
     you want to change and the value being
@@ -686,31 +706,39 @@ def database_updater(args, job, wait_time=90):
     if not isinstance(args, dict):
         db.session.rollback()
         return False
-    # Loop through our args and try to set any of our job variables
-    for (key, value) in args.items():
-        setattr(job, key, value)
-        logging.debug(f"ID:{job.job_id} {key}={value}:{type(value)}")
 
+    def set_values():
+        for (key, value) in args.items():
+            setattr(job, key, value)
+            logging.debug(f"ID:{job.job_id} {key}={value}:{type(value)}")
+
+    set_values()
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
             db.session.commit()
             logging.debug("successfully written to the database")
             return True
         except Exception as error:
-            if "locked" in str(error):
+            if _is_locked(error):
+                _safe_rollback()
                 time.sleep(1)
                 logging.debug(f"database is locked - try {i}/{wait_time}")
+                set_values()
             else:
                 logging.debug(f"Error: {error}")
+                _safe_rollback()
                 raise RuntimeError(str(error)) from error
-    logging.error(f"database is locked after {wait_time}s; update was not committed")
+    logging.error(f"database is locked after {wait_time}s; update was not committed "
+                  "(kept on the job, saved with the next commit)")
     return False
 
 
 def database_adder(obj_class):
     """
-    Adds model item to db\n
-    Used to stop database locked error\n
+    Adds model item to db
+
+    Used to stop database locked error
+
     :param obj_class: Job/Config/Track/ etc
     :return: True if success
     """
@@ -722,7 +750,8 @@ def database_adder(obj_class):
             logging.debug(f"successfully written {type(obj_class).__name__} to the database")
             return True
         except Exception as error:
-            if "locked" in str(error):
+            _safe_rollback()
+            if _is_locked(error):
                 time.sleep(1)
                 logging.debug(f"database is locked - try {i}/90")
             else:
@@ -1010,7 +1039,12 @@ def check_for_wait(job, wait_time=None, force=False):
         while sleep_time < seconds:
             time.sleep(5)
             sleep_time += 5
-            db.session.refresh(job)
+            try:
+                db.session.refresh(job)
+            except Exception as error:  # noqa: BLE001 - a locked database must not end the wait early
+                logging.debug(f"Could not re-read the job during the wait: {error}")
+                _safe_rollback()
+                continue
             if job.title_manual:
                 logging.info("Manual override found.  Overriding auto identification values.")
                 apply_manual_overrides(job)

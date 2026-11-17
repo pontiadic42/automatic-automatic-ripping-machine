@@ -302,16 +302,47 @@ def run():
             job.status = JobState.SUCCESS.value
     finally:
         if job:
-            job.eject()  # each job stores its eject status, so it is safe to call.
-            job.stop_time = datetime.datetime.now()
-            if job.start_time:
-                job_length = job.stop_time - job.start_time
-                minutes, seconds = divmod(job_length.seconds + job_length.days * 86400, 60)
-                hours, minutes = divmod(minutes, 60)
-                job.job_length = f'{hours:d}:{minutes:02d}:{seconds:02d}'
-            else:
-                job.job_length = "0:00:00"
-            db.session.commit()
+            record_job_end(job)
+
+
+def record_job_end(current_job):
+    """
+    Eject and save how the job ended. A database lock or a session left broken by an
+    earlier failed commit (PendingRollbackError) must not leave the job on "waiting" or
+    "ripping" with its drive still assigned, so roll back and save with retries.
+    """
+    # Read what the except/else branches set before any rollback can expire it
+    values = {key: current_job.__dict__[key] for key in ("status", "errors") if key in current_job.__dict__}
+    try:
+        current_job.eject()  # each job stores its eject status, so it is safe to call.
+    except Exception as error:  # noqa: BLE001 - still record the end of the job
+        logging.error(f"Could not eject or release the drive: {error}")
+        utils._safe_rollback()
+        try:
+            if current_job.drive is not None:
+                current_job.drive.job_id_current = None
+        except Exception as release_error:  # noqa: BLE001
+            logging.error(f"Could not release the drive: {release_error}")
+    values["stop_time"] = datetime.datetime.now()
+    try:
+        start_time = current_job.start_time
+    except Exception:  # noqa: BLE001 - session needs a rollback first
+        utils._safe_rollback()
+        start_time = current_job.start_time
+    if start_time:
+        job_length = values["stop_time"] - start_time
+        minutes, seconds = divmod(job_length.seconds + job_length.days * 86400, 60)
+        hours, minutes = divmod(minutes, 60)
+        values["job_length"] = f'{hours:d}:{minutes:02d}:{seconds:02d}'
+    else:
+        values["job_length"] = "0:00:00"
+    if values.get("status") in (None, JobState.MANUAL_WAIT_STARTED.value, JobState.IDLE.value):
+        # Ended without reaching success/failure (e.g. killed while waiting)
+        values["status"] = JobState.FAILURE.value
+        values.setdefault("errors", "ARM stopped before the job finished; see the job log")
+    if not utils.database_updater(values, current_job, wait_time=180):
+        logging.critical(f"Could not save the end of job {current_job.job_id}; "
+                         "the next job's dead-job check will mark it failed")
 
 
 if __name__ == "__main__":

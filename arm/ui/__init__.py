@@ -50,6 +50,9 @@ login_manager.init_app(app)
 # Set Flask database connection configurations
 app.config['SQLALCHEMY_DATABASE_URI'] = sqlitefile
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Wait up to 15 s for SQLite's write lock instead of pysqlite's 5 s, so a short lock held by
+# another process (ripper or UI) delays a write instead of failing it
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 15}}
 # We should really generate a key for each system
 app.config['SECRET_KEY'] = "Big secret key"  # TODO: make this random!
 # Set the global Flask Login state, set to True will ignore any @login_required
@@ -61,6 +64,9 @@ app.logger.debug("Debugging pin: " + os.environ["WERKZEUG_DEBUG_PIN"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+from arm.ui import db_watch  # noqa: E402
+db_watch.install()
 
 # Register route blueprints
 # loaded post database declaration to avoid circular loops
