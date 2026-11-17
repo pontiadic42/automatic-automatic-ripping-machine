@@ -5,8 +5,8 @@ than failing the rip (except where stopping is the point: skip, no disk space).
 """
 import logging
 
-from arm.automation import (confidence, discdb, hwcheck, jellyfin, mkvcheck, notify, organize, prechecks, settings,
-                            store, titles, unidentified)
+from arm.automation import (confidence, discdb, hwcheck, jellyfin, mkvcheck, notify, ocr, organize, prechecks,
+                            settings, store, titles, unidentified)
 
 JobSkipped = prechecks.JobSkipped
 
@@ -160,6 +160,7 @@ def after_move(job, final_directory, problems, raw_paths):
     if problems:
         _safely("report", organize.report_problems, job, problems, raw_paths)
     _safely("jellyfin", jellyfin.announce, job, final_directory)
+    _safely("title OCR", ocr.after_move, job, final_directory)
     _safely("unidentified stills", unidentified.after_move, job, final_directory)
 
 

@@ -73,6 +73,9 @@ ARG HANDBRAKE_VERSION=1.11.2
 COPY ./scripts/docker/image/ /opt/a2rm-build/
 RUN bash /opt/a2rm-build/makemkv.sh "$MAKEMKV_VERSION"
 RUN if [ "$INTEL_QSV" = "1" ]; then bash /opt/a2rm-build/intel_qsv.sh "$HANDBRAKE_VERSION"; fi
+# Tesseract for title-card OCR (TITLE_OCR); English only, ~10 MB
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
 COPY ./scripts/docker/a2rm-check.sh /usr/local/bin/a2rm-check
 RUN chmod +x /usr/local/bin/a2rm-check
 

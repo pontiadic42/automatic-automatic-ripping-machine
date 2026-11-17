@@ -126,13 +126,14 @@ def after_move(job, final_directory):
     in_unidentified = "/unidentified/" in str(final_directory).replace("\\", "/")
     if not in_unidentified or not store.load_job(job.job_id).get("unidentified"):
         return
-    from arm.automation import notify
+    from arm.automation import notify, ocr
     stills = save_stills(job, final_directory)
     guess = job.title + (f" ({job.year})" if job.year and job.year != "0000" else "")
     store.add_attention(job.job_id, "confidence", f"Ripped as unidentified: nobody confirmed {guess}. "
                                                   "Accept it or pick the title to move the files.")
     message = (f"Nobody confirmed the title, so the disc (label {job.label or 'none'}) went to "
-               f"{final_directory}. ARM's guess: {guess}. Accept it or pick the title and the files move.")
+               f"{final_directory}. ARM's guess: {guess}. Accept it or pick the title and the files move."
+               + ocr.hint(job.job_id))
     actions = [notify.http(f"It's {guess}"[:40], notify.action_url(job.job_id, "confirm")),
                notify.view("Pick the title", notify.arm_url(f"/titlesearch?job_id={job.job_id}"))]
     notify.in_app("Do you know this one?", message)

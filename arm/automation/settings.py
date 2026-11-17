@@ -72,6 +72,11 @@ SCHEMA = (
             "contacts an outside service."),
     Setting("DISCDB_URL", "https://thediscdb.com/graphql", "str", "identify", "TheDiscDB address",
             "GraphQL address used for the lookup."),
+    Setting("TITLE_OCR", False, "bool", "identify", "Read the title card (OCR)",
+            "When ARM isn't sure about a disc, read the text on frames from the first 5 minutes of the main "
+            "file with Tesseract (on this server) and search TMDb for it; a match with the right runtime "
+            "becomes the job's suggestion. Works for titles in plain type, not stylised logos. Needs "
+            "tesseract-ocr in the image (A2RM's Dockerfile installs it)."),
     Setting("RUNTIME_MATCHING", True, "bool", "identify", "Use the runtime to identify",
             "When the label is vague, search TMDb and pick the result whose runtime matches the main title."),
 
