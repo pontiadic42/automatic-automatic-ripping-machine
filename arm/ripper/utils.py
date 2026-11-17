@@ -1032,7 +1032,7 @@ def automation_start_now(job):
     try:
         from arm.automation import store
         if store.load_job(job.job_id).get("start_now"):
-            store.update_job(job.job_id, start_now=False)
+            store.update_job(job.job_id, start_now=False, started_now=True)
             return True
     except Exception as error:  # noqa: BLE001 - never let this end the wait by itself
         logging.debug(f"Couldn't read the start-now flag: {error}")

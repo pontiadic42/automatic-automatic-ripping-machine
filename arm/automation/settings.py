@@ -58,6 +58,10 @@ SCHEMA = (
     Setting("LOW_CONFIDENCE_WAIT_TIME", 900, "int", "identify", "Wait for low confidence (seconds)",
             "How long to wait for you when the score is low. After that ARM rips with its best guess. "
             "0 = use MANUAL_WAIT_TIME."),
+    Setting("LOW_CONFIDENCE_ACTION", "unidentified", "choice", "identify", "When nobody answers",
+            "Low confidence and the wait ran out: unidentified = rip as usual but file it under "
+            "unidentified/<label> (job N)/ with stills to help you recognise it, and move it when you accept or "
+            "pick the title; guess = file it under ARM's guess (the old behaviour).", ("unidentified", "guess")),
     Setting("START_NOW_BUTTONS", True, "bool", "identify", "\"Start now\" buttons",
             "While ARM waits before ripping, show a Start now button (home page drive bay, job page and the "
             "phone notification when it has room) that ends the wait and keeps the current title."),

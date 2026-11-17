@@ -86,6 +86,15 @@ def rip_visual_media(have_dupes, job, logfile, protection):
         # Update the job.path with the final directory
         utils.database_updater({'path': final_directory}, job)
 
+    # Low confidence and nobody answered: file it under unidentified/<label> (job N) instead (C16)
+    unidentified_dir = automation_hooks.unidentified_directory(job)
+    if unidentified_dir:
+        automation_hooks.drop_empty_folder(final_directory)
+        final_directory = unidentified_dir
+        utils.make_dir(final_directory)
+        utils.database_updater({'path': final_directory}, job)
+        logging.info(f"Filing this disc as unidentified: {final_directory}")
+
     # Move to final folder: named by title analysis when the titles were analysed, otherwise ARM's own way
     organized, problems = automation_hooks.finish(job, transcode_out_path, final_directory)
     if not organized:

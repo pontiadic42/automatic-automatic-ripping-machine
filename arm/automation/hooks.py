@@ -5,7 +5,8 @@ than failing the rip (except where stopping is the point: skip, no disk space).
 """
 import logging
 
-from arm.automation import confidence, hwcheck, jellyfin, notify, organize, prechecks, settings, store, titles
+from arm.automation import (confidence, hwcheck, jellyfin, notify, organize, prechecks, settings, store, titles,
+                            unidentified)
 
 JobSkipped = prechecks.JobSkipped
 
@@ -50,6 +51,20 @@ def wait_for_user(job, result):
     return None, False
 
 
+def after_wait(job, result):
+    """The manual wait is over: a low score nobody answered means the disc is filed as unidentified"""
+    _safely("unidentified", unidentified.mark_if_unanswered, job, result)
+
+
+def unidentified_directory(job):
+    """Where to put the files instead of movies/TV (C16), or None"""
+    return _safely("unidentified folder", unidentified.directory, job)
+
+
+def drop_empty_folder(folder):
+    _safely("remove empty folder", unidentified.remove_if_empty, folder)
+
+
 def after_track_info(job, raw):
     """MakeMKV listed the titles: analyse them. Returns the plan or None."""
     decisions = _safely("title analysis", titles.plan, job, raw)
@@ -63,6 +78,7 @@ def after_track_info(job, raw):
                 store.update_job(job.job_id, confidence=result)
                 if result["level"] == "low":
                     _safely("ask the user", confidence.ask_user, job, result, 0)
+                    after_wait(job, result)  # too late to wait now: nobody can answer
     return decisions
 
 
@@ -130,6 +146,7 @@ def after_move(job, final_directory, problems, raw_paths):
     if problems:
         _safely("report", organize.report_problems, job, problems, raw_paths)
     _safely("jellyfin", jellyfin.announce, job, final_directory)
+    _safely("unidentified stills", unidentified.after_move, job, final_directory)
 
 
 def regular_notification(title, body):

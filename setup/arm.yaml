@@ -426,6 +426,14 @@ CONFIDENCE_SKIP_WAIT_ABOVE: 90
 # MANUAL_WAIT_TIME.
 LOW_CONFIDENCE_WAIT_TIME: 900
 
+# LOW_CONFIDENCE_ACTION
+# When nobody answers.
+# Low confidence and the wait ran out: unidentified = rip as usual but file it under
+# unidentified/<label> (job N)/ with stills to help you recognise it, and move it when you accept or
+# pick the title; guess = file it under ARM's guess (the old behaviour).
+# One of: unidentified, guess
+LOW_CONFIDENCE_ACTION: "unidentified"
+
 # START_NOW_BUTTONS
 # "Start now" buttons.
 # While ARM waits before ripping, show a Start now button (home page drive bay, job page and the phone

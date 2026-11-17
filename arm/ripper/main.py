@@ -128,6 +128,8 @@ def main():
     # Manual wait: skipped when the title is certain, longer when it isn't
     wait_seconds, force_wait = automation_hooks.wait_for_user(job, confidence)
     utils.check_for_wait(job, wait_seconds, force_wait)
+    # Low confidence and nobody answered: file it as unidentified (LOW_CONFIDENCE_ACTION)
+    automation_hooks.after_wait(job, confidence)
 
     log_arm_params(job)
     check_fstab()

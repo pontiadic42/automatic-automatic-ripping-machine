@@ -367,7 +367,7 @@ def retitle(job, old_path, old_base):
     renamed = 0
     for root, _dirs, files in os.walk(new_dir):
         for name in files:
-            if old_base and name.startswith(old_base) and name != new_base:
+            if old_base and old_base != new_base and name.startswith(old_base) and name != new_base:
                 target = unique_path(os.path.join(root, new_base + name[len(old_base):]))
                 os.rename(os.path.join(root, name), target)
                 renamed += 1

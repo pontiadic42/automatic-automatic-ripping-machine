@@ -354,7 +354,9 @@ def ask_user(job, result, wait_seconds):
                             f"Not sure this is {job.title} ({result['score']}/100). Confirm or pick another title.")
         title = f"Is this {job.title}" + (f" ({job.year})" if job.year and job.year != "0000" else "") + "?"
         body = (f"{result['score']}/100 sure. " + "; ".join(result["reasons"][:3]) +
-                f". ARM rips with this title in {minutes} min unless you change it.")
+                (f". In {minutes} min ARM rips it into the unidentified folder (you can still name it later)."
+                 if settings.get("LOW_CONFIDENCE_ACTION") == "unidentified" and wait_seconds
+                 else f". ARM rips with this title in {minutes} min unless you change it."))
         actions = [notify.http("Yes, that's it", notify.action_url(job.job_id, "confirm")), pick]
     suggestion = result.get("suggestion")
     if suggestion:

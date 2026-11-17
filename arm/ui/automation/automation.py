@@ -65,7 +65,8 @@ def act():
         return render_template("automation_act.html", job=job, action=action, label=ACTIONS[action],
                                token=token, done=False)
     if action == "confirm":
-        confirm_title(job)
+        if not move_if_unidentified(job):
+            confirm_title(job)
         app.logger.info(f"Job {job_id}: title confirmed from a notification")
     elif action == "suggest":
         if not apply_suggestion(job):
@@ -129,8 +130,28 @@ def _accept(job, name):
     if not job.finished:
         confirm_title(job)
         return f"Keeping {name}. ARM starts ripping when its wait ends."
+    if move_if_unidentified(job):
+        return f"Kept {name} and moved its files to {job.path}."
     store.clear_attention(job.job_id, "confidence")
     return f"Kept {name}."
+
+
+def move_if_unidentified(job):
+    """
+    A finished job filed as unidentified (nobody answered in time): accepting its title confirms it
+    and moves the folder to movies/TV under that title.
+    :return: True if the files were moved
+    """
+    path = str(getattr(job, "path", "") or "").replace("\\", "/")
+    if not getattr(job, "finished", False) or "/unidentified/" not in path:
+        return False
+    if not store.load_job(job.job_id).get("unidentified"):
+        return False
+    from arm.ui.jobs import jobs as jobs_routes
+    old_path, old_base = job.path, jobs_routes._title_base(job)
+    confirm_title(job)
+    jobs_routes._retitle_finished(job, old_path, old_base)
+    return job.path != old_path
 
 
 def _set_season(job, _name):
@@ -313,6 +334,22 @@ def test_ntfy():
     flash("Test notification sent." if ok else "Couldn't send it. Check the server and topic.",
           "success" if ok else "danger")
     return redirect(url_for("route_automation.automation_settings"))
+
+
+@route_automation.route('/automation/still')
+@csrf.exempt
+def still():
+    """Stills saved for a job filed as unidentified (signed: also opened from the phone notification)"""
+    job_id = request.args.get("job", type=int)
+    index = request.args.get("n", type=int)
+    token = request.args.get("token")
+    if job_id is None or index is None or not notify.check_signature(job_id, f"still{index}", token):
+        abort(403)
+    stills = store.load_job(job_id).get("stills") or []
+    if not 0 <= index < len(stills) or not os.path.isfile(stills[index]["file"]):
+        abort(404)
+    with open(stills[index]["file"], "rb") as handle:
+        return Response(handle.read(), mimetype="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
 @route_automation.route('/automation/frame')

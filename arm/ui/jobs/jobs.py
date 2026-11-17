@@ -56,6 +56,9 @@ def _automation_view(job):
         if not data["titles"].get("ambiguous_language"):
             data["attention"] = [a for a in data.get("attention") or [] if a.get("kind") != "language"]
     data["versions"] = _versions(data)
+    if data.get("stills"):
+        from arm.automation import unidentified
+        data["still_urls"] = [unidentified.still_url(job.job_id, index) for index in range(len(data["stills"]))]
     if getattr(job, "video_type", None) == "series" and getattr(job, "imdb_id", None):
         data["season_choices"] = _season_choices(job.imdb_id)
     return data

@@ -60,6 +60,18 @@
         });
     </script>
 
+    {% if automation.still_urls %}
+        <h3 class="arm-auto-h">Stills from the main file</h3>
+        <p class="arm-faint" style="font-size:12px">To help you recognise the disc. The first one is near the start
+            (title card), the others are spread over the film.</p>
+        <div class="arm-auto-stills" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px">
+            {% for url in automation.still_urls %}
+                <a href="{{ url }}" target="_blank" rel="noopener"><img src="{{ url }}" alt="Still {{ loop.index }}"
+                    loading="lazy" style="width:200px; max-width:45vw; border-radius:4px"></a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% if automation.season_choices %}
         {% set chosen = automation.tv_season or {} %}
         <div class="arm-attn" id="season">

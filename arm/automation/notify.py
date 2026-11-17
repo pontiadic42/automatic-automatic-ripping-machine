@@ -51,7 +51,7 @@ def http(label, url, method="POST", clear=True):
     return {"action": "http", "label": label, "url": url, "method": method, "clear": clear}
 
 
-def send(title, message, priority="default", tags=(), click=None, actions=(), icon=None):
+def send(title, message, priority="default", tags=(), click=None, actions=(), icon=None, attach=None):
     """
     Publish to ntfy. Returns True when the server accepted it.
     Never raises: a notification problem must not stop a rip.
@@ -71,6 +71,9 @@ def send(title, message, priority="default", tags=(), click=None, actions=(), ic
         payload["actions"] = list(actions)[:3]
     if icon and str(icon).startswith("http"):
         payload["icon"] = icon
+    if attach and str(attach).startswith("http"):
+        payload["attach"] = attach  # the phone downloads it from ARM, like the buttons
+        payload["filename"] = "still.jpg"
     headers = {}
     if settings.get("NTFY_TOKEN"):
         headers["Authorization"] = f"Bearer {settings.get('NTFY_TOKEN')}"
