@@ -15,7 +15,7 @@
     </div>
 
     <section class="arm-card arm-auto-group">
-        <table class="arm-lib-table" id="libTable">
+        <div class="arm-lib-wrap"><table class="arm-lib-table" id="libTable">
             <thead><tr><th>Name</th><th>Files</th><th>Size</th><th>Job</th><th>What looks wrong</th><th></th></tr></thead>
             <tbody>
             {% for item in r["items"] %}
@@ -33,7 +33,7 @@
                 {% endif %}
             {% endfor %}
             </tbody>
-        </table>
+        </table></div>
         {% if not counts[selected] %}<p class="arm-muted">Nothing here.</p>{% endif %}
         <p class="arm-muted" style="font-size:13px">Only names and sizes are read here; Library health checks the files themselves.
             Changes never overwrite a file, and can be undone below.</p>

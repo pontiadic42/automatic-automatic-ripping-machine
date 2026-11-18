@@ -315,3 +315,6 @@ html .custom-select.arm-auto-multi, html[data-theme="dark"] .custom-select.arm-a
 .arm-lib-results { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .arm-lib-results img { border-radius: 3px; }
 @media (max-width: 700px) { .arm-lib-table th:nth-child(2), .arm-lib-table td:nth-child(2) { display: none; } }
+.arm-lib-wrap { overflow-x: auto; }
+.arm-lib-table .arm-pill { white-space: normal; text-align: left; }
+.arm-lib-table td:last-child { white-space: nowrap; }
