@@ -20,7 +20,7 @@
             <tbody>
             {% for item in r["items"] %}
                 {% set codes = item.issues|map(attribute="code")|list %}
-                {% if selected == "all" or (selected == "attention" and item.issues) or selected in codes %}
+                {% if selected == "all" or (selected == "attention" and item.attention) or selected in codes %}
                 <tr data-name="{{ item.name|lower }}">
                     <td><span class="arm-faint">{{ item.root }}/</span>{{ item.name }}</td>
                     <td>{{ item.videos }}</td>

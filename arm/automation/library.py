@@ -38,6 +38,7 @@ RAW_NAME = re.compile(r"(?:^|_)t\d{2,3}\.[A-Za-z0-9]+$")
 TID = re.compile(r"_t(\d{2,3})\.[A-Za-z0-9]+$")
 EPISODE_NAME = re.compile(r"S(\d{1,2})E(\d{1,3})", re.IGNORECASE)
 ROLES = ("main", "version", "episode", "extra", "keep")
+INFO_ONLY = {"untracked"}  # worth a filter, but a well-named folder A2RM didn't make is fine
 SIDE_FILES = (".nfo", ".srt", ".ass", ".sub", ".idx", ".jpg", ".png")
 
 
@@ -206,8 +207,10 @@ def scan(owners=None):
                 continue
             items.append(_describe(root, name, path, owners))
     _mark_duplicates(items)
+    for item in items:
+        item["attention"] = any(issue["code"] not in INFO_ONLY for issue in item["issues"])
     result = {"scanned": datetime.datetime.now().isoformat(timespec="seconds"), "items": items,
-              "problems": sum(1 for item in items if item["issues"])}
+              "problems": sum(1 for item in items if item["attention"])}
     store.update_state(library=result)
     return result
 

@@ -49,7 +49,7 @@ def files():
         return redirect(url_for("route_library_files.files", filter=request.args.get("filter")))
     result = library.scan()
     counts = {name: (len(result["items"]) if name == "all" else
-                     sum(1 for item in result["items"] if item["issues"]) if name == "attention" else
+                     sum(1 for item in result["items"] if item["attention"]) if name == "attention" else
                      sum(1 for item in result["items"] if any(i["code"] == name for i in item["issues"])))
               for name in FILTERS}
     selected = request.args.get("filter", "attention")

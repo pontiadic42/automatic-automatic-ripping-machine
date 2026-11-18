@@ -105,6 +105,10 @@ class TestScan(LibraryCase):
         raw = next(i for i in result["items"] if i["id"] == "tv/Doctor Who (2005–)_179152795038")
         self.assertIn("1 file still named", next(x["text"] for x in raw["issues"] if x["code"] == "raw_names"))
         self.assertEqual(store.load_state()["library"]["problems"], result["problems"])
+        attention = {item["id"] for item in result["items"] if item["attention"]}
+        self.assertNotIn("movies/Ant-Man (2015)", attention)
+        self.assertNotIn("movies/Annabelle-Creation (2017)", attention)  # only untracked, named right
+        self.assertEqual(len(attention), 5)
 
     def test_remakes_arent_duplicates_but_show_folders_are(self):
         self.write("movies/A Nightmare on Elm Street (1984)/a.mkv")
