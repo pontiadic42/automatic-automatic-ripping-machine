@@ -78,6 +78,11 @@ don't report A2RM problems to them.
 - **Library health check** (every `HEALTH_CHECK_DAYS`, default 7; never while ripping or transcoding): empty or
   unfinalized files, files ffprobe can't read or without video, movies far from TMDb's runtime, probable duplicates.
   Read-only; results on Settings > Automation > Library health and in the daily summary.
+- **Library > Manage files:** everything in `movies/`, `tv/` and `unidentified/`, including files A2RM didn't make.
+  Flags ARM's `_<number>` copy folders, loose files, MakeMKV names never renamed, season-only show folders, missing
+  years and the same title in several folders. Per item: set type, title, year, IMDb id (TMDb search), season and
+  first episode, and a role per file; preview every move, then apply. Merges never overwrite (same-size files stay
+  put, others get " (2)"); jobs, `.nfo` and Jellyfin are updated. Move to trash, empty trash (asks first), undo.
 - **Jellyfin:** scans the new folder right away, then checks it matched the same movie or show.
 
 ### Web UI
