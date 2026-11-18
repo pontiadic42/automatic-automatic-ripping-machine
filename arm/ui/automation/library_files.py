@@ -111,9 +111,7 @@ def item():
     base = base if os.path.isdir(base) else os.path.dirname(base)
     file_list = [{"rel": rel, "role": role, "size": size_text(max(0, library._size(os.path.join(base, rel))))}
                  for rel, role in sorted(roles.items(), key=lambda pair: library._episode_order(pair[0]))]
-    group = library.title_key(found["title"], found["year"] if found["root"] == "movies" else "")
-    others = [other for other in (library.store.load_state().get("library") or {}).get("items", [])
-              if other.get("group") == group and other["id"] != found["id"]]
+    others = library.same_title(found, (library.store.load_state().get("library") or {}).get("items", []))
     return render_template("library_item.html", item=found, v=values, files=file_list, preview=preview,
                            others=others, size_text=size_text, roles=library.ROLES)
 

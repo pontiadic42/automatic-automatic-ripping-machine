@@ -265,6 +265,13 @@ def _mark_duplicates(items):
             item["group"] = title_key(item["title"], item["year"] if root == "movies" else "")
 
 
+def same_title(item, items):
+    """Other items with this title (any folder; years must agree when both have one)"""
+    key = title_key(item["title"])
+    return [other for other in items if other["id"] != item["id"] and key and title_key(other["title"]) == key
+            and (not item["year"] or not other["year"] or item["year"] == other["year"])]
+
+
 def find(item_id):
     path = absolute(item_id)
     if item_of(path) != item_id.strip("/") or not os.path.exists(path):
