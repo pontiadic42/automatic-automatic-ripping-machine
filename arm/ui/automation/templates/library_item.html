@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="arm-head">
+        <h1 style="word-break:break-word">{{ item.name }}</h1>
+        <span class="arm-faint" style="font-size:13px">{{ item.root }}/ · {{ item.videos }} video file{{ "s" if item.videos != 1 }} · {{ size_text(item.bytes) }}
+            · {% if item.job_id %}<a href="/jobdetail?job_id={{ item.job_id }}">job {{ item.job_id }}</a>{% else %}not from an A2RM job{% endif %}</span>
+        <span class="arm-head-right"><a href="{{ url_for('route_library_files.files') }}">All files</a></span>
+    </div>
+
+    {% if item.issues %}
+    <p>{% for issue in item.issues %}<span class="arm-pill warn" style="font-size:12px; margin:0 4px 4px 0; display:inline-block">{{ issue.text }}</span>{% endfor %}</p>
+    {% endif %}
+    {% if others %}
+    <p class="arm-muted" style="font-size:13px">Same title: {% for o in others %}<a href="{{ url_for('route_library_files.item', id=o.id) }}">{{ o.id }}</a>{{ ", " if not loop.last }}{% endfor %}.
+        To merge, give this one the same title and year: its files go into that folder (nothing is overwritten; files already there with the same size stay where they are).</p>
+    {% endif %}
+
+    <form method="post" id="libForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="id" value="{{ item.id }}">
+        <section class="arm-card arm-auto-group">
+            <h2>What it is</h2>
+            <div class="arm-lib-fields">
+                <label>Type <select name="kind" id="libKind">
+                    <option value="movie" {{ "selected" if v.kind == "movie" }}>Movie</option>
+                    <option value="series" {{ "selected" if v.kind == "series" }}>TV show</option></select></label>
+                <label>Title <input name="title" id="libTitle" value="{{ v.title }}" required style="min-width:240px"></label>
+                <label>Year <input name="year" id="libYear" value="{{ v.year or '' }}" size="5" maxlength="4"></label>
+                <label>IMDb id <input name="imdb_id" id="libImdb" value="{{ v.imdb_id or '' }}" size="11" placeholder="tt1234567"></label>
+                <label class="lib-tv">Season <input name="season" value="{{ v.season if v.season is not none else '' }}" size="3"></label>
+                <label class="lib-tv">First episode <input name="first_episode" value="{{ v.first_episode or '' }}" size="3" placeholder="1"></label>
+            </div>
+            <p class="arm-muted lib-tv" style="font-size:13px">With a season, the episode files are numbered in order from the first episode
+                (by their current SxxEyy, else MakeMKV's title number). Leave the season empty to keep their names.</p>
+            <p style="margin-top:10px"><input type="search" id="libQuery" value="{{ v.title }}" placeholder="Search TMDb" style="min-width:240px">
+                <button class="arm-btn" type="button" id="libSearchBtn">Search TMDb</button></p>
+            <div id="libResults" class="arm-lib-results"></div>
+        </section>
+
+        <section class="arm-card arm-auto-group">
+            <h2>Files</h2>
+            <table class="arm-lib-table">
+                <thead><tr><th>File</th><th>Size</th><th>Is</th></tr></thead>
+                <tbody>
+                {% for f in files %}
+                    <tr><td style="word-break:break-all">{{ f.rel }}<input type="hidden" name="file_{{ loop.index0 }}" value="{{ f.rel }}"></td>
+                        <td style="white-space:nowrap">{{ f.size }}</td>
+                        <td><select name="role_{{ loop.index0 }}">
+                            {% for role, label in [("main", "Main movie"), ("version", "Other version"), ("episode", "Episode"), ("extra", "Extra (to extras/)"), ("keep", "Keep its name")] %}
+                                <option value="{{ role }}" {{ "selected" if f.role == role }}>{{ label }}</option>{% endfor %}</select></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <p class="arm-muted" style="font-size:13px">Subtitles and pictures named after a video move with it. Other files keep their place in the folder.</p>
+        </section>
+
+        {% if preview %}
+        <section class="arm-card arm-auto-group">
+            <h2>Preview</h2>
+            <p>Goes to <code>{{ preview.target }}</code>.</p>
+            {% for note in preview.notes %}<p class="arm-attn" style="font-size:13px">{{ note }}</p>{% endfor %}
+            {% if preview.moves %}
+                <table class="arm-lib-table"><thead><tr><th>From</th><th>To</th></tr></thead><tbody>
+                {% for m in preview.moves %}<tr><td style="word-break:break-all">{{ m.from }}</td><td style="word-break:break-all">{{ m.to }}</td></tr>{% endfor %}
+                </tbody></table>
+            {% else %}<p class="arm-muted">Nothing to change: the names are already right.</p>{% endif %}
+            {% if preview.same %}<p style="font-size:13px">Already there with the same size, left where they are:
+                {% for s in preview.same %}<code>{{ s.from }}</code>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+            {% if preview.drop %}<p class="arm-muted" style="font-size:13px">A2RM's own .nfo removed (the target folder has one): {{ preview.drop|join(", ") }}</p>{% endif %}
+            {% if preview.values.imdb_id %}<p class="arm-muted" style="font-size:13px">A2RM writes the .nfo with {{ preview.values.imdb_id }} (when WRITE_NFO is on) and tells Jellyfin.</p>{% endif %}
+        </section>
+        {% endif %}
+
+        <p>
+            <button class="arm-btn" type="submit" name="action" value="preview">Preview</button>
+            {% if preview and preview.moves %}<button class="arm-btn arm-btn-primary" type="submit" name="action" value="apply">Apply these {{ preview.moves|length }} moves</button>{% endif %}
+            <button class="arm-btn arm-btn-danger" type="submit" name="action" value="trash" formnovalidate
+                    onclick="return confirm('Move {{ item.id }} to the trash? You can undo it until the trash is emptied.')"
+                    style="float:right">Move to trash</button>
+        </p>
+    </form>
+
+    <script>
+        (function () {
+            const kind = document.getElementById("libKind");
+            const tv = () => document.querySelectorAll(".lib-tv").forEach(el => el.style.display = kind.value === "series" ? "" : "none");
+            kind.addEventListener("change", tv); tv();
+            const box = document.getElementById("libResults");
+            document.getElementById("libSearchBtn").addEventListener("click", function () {
+                const q = document.getElementById("libQuery").value;
+                box.textContent = "Searching…";
+                fetch("{{ url_for('route_library_files.search') }}?kind=" + kind.value + "&q=" + encodeURIComponent(q))
+                    .then(r => r.json()).then(function (data) {
+                        box.textContent = data.results.length ? "" : (data.error || "Nothing found.");
+                        data.results.forEach(function (r) {
+                            const b = document.createElement("button");
+                            b.type = "button"; b.className = "arm-btn";
+                            if (r.poster_url) { const i = document.createElement("img"); i.src = r.poster_url; i.alt = ""; i.height = 40; b.appendChild(i); }
+                            b.appendChild(document.createTextNode(r.title + (r.year ? " (" + r.year + ")" : "") + (r.imdb_id ? "" : " · no IMDb id")));
+                            b.addEventListener("click", function () {
+                                document.getElementById("libTitle").value = r.title;
+                                document.getElementById("libYear").value = r.year;
+                                document.getElementById("libImdb").value = r.imdb_id;
+                            });
+                            box.appendChild(b);
+                        });
+                    }).catch(() => box.textContent = "Search failed.");
+            });
+        })();
+    </script>
+{% endblock %}

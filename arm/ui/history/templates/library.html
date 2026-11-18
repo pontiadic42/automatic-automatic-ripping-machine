@@ -3,6 +3,7 @@
     <div class="arm-head">
         <h1>Library</h1>
         <span class="arm-faint" style="font-size:13px">{{ pages.total }} job{{ "" if pages.total == 1 else "s" }}</span>
+        <span class="arm-head-right"><a class="arm-btn" href="{{ url_for('route_library_files.files') }}">Manage files</a></span>
     </div>
     <div class="arm-chips">
         {% for name, label in filter_names.items() %}

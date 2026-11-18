@@ -79,6 +79,7 @@ from arm.ui.jobs.jobs import route_jobs  # noqa: E402,F811
 from arm.ui.sendmovies.sendmovies import route_sendmovies  # noqa: E402,F811
 from arm.ui.notifications.notifications import route_notifications  # noqa: E402,F811
 from arm.ui.automation.automation import route_automation  # noqa: E402,F811
+from arm.ui.automation.library_files import route_library_files  # noqa: E402,F811
 app.register_blueprint(route_settings)
 app.register_blueprint(route_logs)
 app.register_blueprint(route_auth)
@@ -88,6 +89,7 @@ app.register_blueprint(route_jobs)
 app.register_blueprint(route_sendmovies)
 app.register_blueprint(route_notifications)
 app.register_blueprint(route_automation)
+app.register_blueprint(route_library_files)
 
 # Remove GET/page loads from logging
 import logging  # noqa: E402,F811

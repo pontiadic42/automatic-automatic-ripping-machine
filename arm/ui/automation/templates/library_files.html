@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="arm-head">
+        <h1>Manage files</h1>
+        <span class="arm-faint" style="font-size:13px">{{ r["items"]|length }} items in movies, tv and unidentified · {{ root }}</span>
+        <span class="arm-head-right"><a href="{{ url_for('route_history.library') }}">Library</a></span>
+    </div>
+
+    <div class="arm-chips" id="libChips">
+        {% for name, label in filters.items() %}
+            <a class="arm-chip{% if name == selected %} active{% endif %}"
+               href="{{ url_for('route_library_files.files', filter=name) }}">{{ label }}<span class="arm-count">{{ counts[name] }}</span></a>
+        {% endfor %}
+        <span class="arm-search"><input type="search" id="libSearch" placeholder="Filter by name" aria-label="Filter by name"></span>
+    </div>
+
+    <section class="arm-card arm-auto-group">
+        <table class="arm-lib-table" id="libTable">
+            <thead><tr><th>Name</th><th>Files</th><th>Size</th><th>Job</th><th>What looks wrong</th><th></th></tr></thead>
+            <tbody>
+            {% for item in r["items"] %}
+                {% set codes = item.issues|map(attribute="code")|list %}
+                {% if selected == "all" or (selected == "attention" and item.issues) or selected in codes %}
+                <tr data-name="{{ item.name|lower }}">
+                    <td><span class="arm-faint">{{ item.root }}/</span>{{ item.name }}</td>
+                    <td>{{ item.videos }}</td>
+                    <td style="white-space:nowrap">{{ size_text(item.bytes) }}</td>
+                    <td>{% if item.job_id %}<a href="/jobdetail?job_id={{ item.job_id }}">{{ item.job_id }}</a>{% else %}<span class="arm-faint">none</span>{% endif %}</td>
+                    <td>{% for issue in item.issues %}<span class="arm-pill {{ 'bad' if issue.code in ['empty'] else 'warn' if issue.code in ['duplicate', 'copy', 'raw_names', 'unidentified', 'loose', 'season_folder'] else '' }}"
+                            style="font-size:11px; margin:0 4px 3px 0; display:inline-block">{{ issue.text }}</span>{% endfor %}</td>
+                    <td><a class="arm-btn" href="{{ url_for('route_library_files.item', id=item.id) }}">Fix</a></td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if not counts[selected] %}<p class="arm-muted">Nothing here.</p>{% endif %}
+        <p class="arm-muted" style="font-size:13px">Only names and sizes are read here; Library health checks the files themselves.
+            Changes never overwrite a file, and can be undone below.</p>
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Recent changes</h2>
+        {% if history %}
+            {% for e in history %}
+                <p style="margin:0 0 6px; font-size:13px"><span class="arm-faint">{{ e.time.replace("T", " ") }}</span>
+                    {{ "Trash" if e.action == "trash" else "Rename/move" }}: <code style="word-break:break-all">{{ e.summary }}</code>
+                    ({{ e.moves|length }} file{{ "s" if e.moves|length != 1 }}{% if e.jobs %}, job {{ e.jobs|map(attribute="job_id")|join(", ") }}{% endif %})
+                    {% if e.undone %}<span class="arm-pill">undone</span>{% else %}
+                    <form method="post" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="undo"><input type="hidden" name="entry" value="{{ e.id }}">
+                        <button class="arm-btn arm-btn-small" type="submit">Undo</button>
+                    </form>{% endif %}</p>
+            {% endfor %}
+        {% else %}<p class="arm-muted">No changes yet.</p>{% endif %}
+    </section>
+
+    <section class="arm-card arm-auto-group">
+        <h2>Trash</h2>
+        <p>{{ trash_count }} item{{ "s" if trash_count != 1 }} ({{ trash_size }}) in <code>{{ root }}/.a2rm-trash</code>. Undo a trash change to put it back.</p>
+        {% if trash_count %}
+        <form method="post" onsubmit="return confirm('Delete the {{ trash_count }} item(s) in the trash for good ({{ trash_size }})? This can\'t be undone.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="empty_trash">
+            <button class="arm-btn arm-btn-danger" type="submit">Empty trash</button>
+        </form>
+        {% endif %}
+    </section>
+
+    <script>
+        document.getElementById("libSearch").addEventListener("input", function () {
+            const text = this.value.trim().toLowerCase();
+            document.querySelectorAll("#libTable tbody tr").forEach(function (row) {
+                row.style.display = !text || row.dataset.name.includes(text) ? "" : "none";
+            });
+        });
+    </script>
+{% endblock %}
