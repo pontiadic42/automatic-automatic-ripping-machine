@@ -1,7 +1,62 @@
 # Changelog
 
+## A2RM
 
-## Current pre-release v2.5.0
+A2RM has no version numbers of its own yet; changes are listed by date. The Docker image still reports ARM's version
+(`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
+
+### 2026-11-17
+- **Library > Manage files:** rename, move, merge, trash and undo anything in `movies/`, `tv/` and `unidentified/`,
+  including files A2RM didn't make; preview before every change.
+- **Library health check:** weekly read-only check of every library file (unreadable, unfinalized, too short,
+  duplicates).
+- **`.nfo` files** with the TMDb id so Jellyfin matches exactly; optional tinyMediaManager scrape.
+- **Naming patterns** for movies, episodes and season folders.
+- **TheDiscDB lookup** (opt-in) and **title-card OCR** (opt-in) for identification.
+- **TV:** pick the season and first episode, switch a job between movie and TV show, clearer search results; "play
+  all" titles found by length so DVD episodes aren't skipped.
+- **Fixes:** a wrong disc-ID database entry no longer wins over a better label match (Doctor Who / King Kong Escapes);
+  titles use TMDb's spelling instead of the label's hyphens.
+- README: install steps, tests, from-scratch build notes.
+
+### 2026-11-16
+- **"Start now"** buttons (home page, job page, phone notification).
+- **Unsure discs go to `unidentified/`** when nobody answers, with stills to recognise them.
+- **Hardware encoder check** before ripping, with CPU fallback; **Hardware check** page; the encoder each job used.
+- **Unfinalized MakeMKV files** caught and retried; repair script.
+- Language settings as drop-downs, grouped under **Languages**.
+- A database lock at the end of the manual wait no longer kills the job.
+- Drives that aren't passed into the container aren't shown.
+
+### 2026-11-14
+- **Docker image:** current MakeMKV at build time, optional Intel QuickSync (`INTEL_QSV=1`) without `--privileged`,
+  `a2rm-check`, host check and MakeMKV update scripts, [QuickSync guide](docs/quicksync.md).
+- **Language versions:** stills, length and tracks for each version, "Keep this one".
+- Banner buttons: accept, pick another, cancel, delete files, dismiss.
+
+### 2026-11-13
+- **Automation:** confidence score, phone notifications with buttons (ntfy), title analysis (main feature, cuts,
+  language versions, duplicates, extras, episodes), Jellyfin-friendly names, already-ripped and disk-space checks,
+  finished-file checks, MakeMKV retries, stuck-job watchdog, Jellyfin scan and match check, daily backup, cleanup and
+  summary.
+
+### 2026-11-12
+- **New web UI:** drive bays on the home page, poster library, phone layout, light and dark themes.
+
+### 2026-11-10 to 2026-11-12
+- Fixes to ARM 2.24.4 (most offered to ARM as pull requests #1893-#1907): MakeMKV left running, wrong DVD titles,
+  "fatal error" on eject, stuck drives, the 99-title check, MakeMKV failure reasons, missing disc labels, UI title
+  edits overwritten, `arm.yaml` rewrites, abandon signalling the wrong process, small crashes, secrets in logs,
+  MusicBrainz and data-disc edge cases, unlabelled Blu-rays, a slow disc-ID API.
+
+## ARM (before the fork)
+
+ARM's own changelog as it was in the repository; it stops at v2.5.0. ARM's later changes are in its
+[releases](https://github.com/automatic-ripping-machine/automatic-ripping-machine/releases).
+
+
+
+### Current pre-release v2.5.0
   - Only one large item for this version.
 
     Now added the possibility for users to use [TMDB](https://developers.themoviedb.org/3/getting-started/introduction) as their metadata provider, this only works for movies at the moment. 
@@ -12,7 +67,7 @@
     - Added method to let users send/submit their correctly identified movies to a new crc64 API (an api key required)
     - Added check for crc64 from remote database
 
-## v2.4.6
+### v2.4.6
  - Updated jquery tablesorter, old version was vulnerable to XSS 
  - Removed all unused versions of CSS 
  - Smalls validation checks when searching the database page. (searching now requires min 3 chars)
@@ -22,7 +77,7 @@
  - Some progress on converting all string types to fstrings where possible
  - ARM will now break out of wait if the user inputs/searches for movie/series.
 
-## v2.3.4 - v2.4.5
+### v2.3.4 - v2.4.5
  - Adding bypass for db.session.commit() error for movies (WIP only MakeMKV and part of handbrake is coded)
  - Abandon job option added to main ARM ui page (for now this only sets job to failed no processes are cancelled)
  - Typo fixes (ARM ui images has/had some typos these have been updated and corrected)
@@ -42,7 +97,7 @@
  - Bugfix (ARM ui now correctly deals with setup (it should now create all necessary folders and do so without errors) )
  - Bugfix (ARM ui update title no longer shows html on update)
 
-## v2.3.4
+### v2.3.4
  - Travisci/flake8 code fixes
  - github actions added
  - Bugfix(small bugfix for datadiscs)
@@ -50,7 +105,7 @@
  - Bugfix (db connections are now closed properly for CD's)
  - added bypass for music CD's erroring when trying to commit to the db at the same time
 
-## v2.3.3
+### v2.3.3
 
  - A smaller more manageable update this time 
  - Early changes for cleaner looking log output
@@ -59,14 +114,14 @@
   - Bugfix (Bluray disc with no titles will now be handled correctly and will not throw an exception )
   - Bugfix (abcde.config now correctly uses musicbrainz)
 
-## v2.3.2
+### v2.3.2
  - Added prettytables for logging
  - Remove api/keys from the Config class string printout 
   - Security (HandBrake.py was still outputting all api key and secrets to log file. This has now been fixed)
   - Bugfix (Transcode limit is now respected) 
   - Bugfix (Bluray disc with no titles will now be handled correctly and will not throw an exception ) 
 
-## v2.2.0
+### v2.2.0
  - Added Apprise notifications
   - Added more to the Basic web framework (flask_login)
     - Added login/admin account
@@ -91,14 +146,14 @@
   - Bugfix (datadiscs with no label no longer fail) 
   - Bugfix (NONE_(timestamp).log will no longer be generated ) 
 
-## v2.1.0
+### v2.1.0
  - Added new package (armui) for web user interface
   - Basic web framework (Flask, Bootstrap)
     - Retitle functionality
     - View or download logs of active and past rips
   - sqlite db
 
-## v2.0.1
+### v2.0.1
  - Fixed crash inserting bluray when bdmt_eng.xml file is not present
  - Fixed error when deleting non-existent raw files
  - Fixed file extension config parameter not being honored when RIPMETHOD='mkv'
@@ -106,7 +161,7 @@
  - Added logic for when skip_trancode=True to make it consistant with standard processing
  - Removed systemd and reimplemented arm_wrapper.sh (see Readme for upgrade instructions)
 
-## v2.0.0
+### v2.0.0
  - Rewritten completely in Python
  - Run as non-root
  - Seperate HandBrake arguments and profiles for DVD's and Bluray's
@@ -114,21 +169,21 @@
  - Better logging
 -  Auto download latest keys_hashed.txt and KEYDB.cfg
 
-## v1.3.0
+### v1.3.0
  - Get Title for DVD and Blu-Rays so that media servesr can identify them easily.
  - Determine if video is Movie or TV-Show from OMDB API query so that different actions can be taken (TV shows usually require manual episode identification)
  - Option for MakeMKV to rip using backup method.
  - Option to rip only main feature if so desired.
 
-## v1.2.0
+### v1.2.0
 - Distinguish UDF data from UDF video discs
 
-## v1.1.1
+### v1.1.1
 
 - Added devname to abcde command
 - Added logging stats (timers). "grep STAT" to see parse them out.
 
-## v1.1.0
+### v1.1.0
 
 - Added ability to rip from multiple drives at the same time
 - Added a config file for parameters
@@ -140,10 +195,10 @@
 - Remove MakeMKV destination directory after HandBrake finishes transcoding
 - Misc stuff
 
-## v1.0.1
+### v1.0.1
 
 - Fix ripping "Audio CDs" in ISO9660 format like LOTR.
 
-## v1.0.0
+### v1.0.0
 
 - Initial Release

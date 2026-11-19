@@ -10,6 +10,10 @@ A2RM is based on ARM 2.24.4. All the credit for ARM itself goes to its authors a
 [Credits](#credits). A2RM is a personal fork and isn't affiliated with or supported by the ARM project, so please
 don't report A2RM problems to them.
 
+**[ARM and A2RM: what's different](docs/ARM-vs-A2RM.md)** compares the two area by area (identification, which
+titles get ripped, names, checks, housekeeping, web UI, Docker image, bug fixes, outside services) and lists every
+A2RM setting with its default.
+
 ## What A2RM adds to ARM
 
 ### Identification
@@ -129,23 +133,64 @@ docker exec -u arm -w /opt/arm -e ARM_LOCAL_TZ=$(timedatectl show -p Timezone --
 
 ## Install
 
-A2RM is installed like ARM; see ARM's [wiki](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki)
-and [Docker guide](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki/docker) for the
-basics (drives, volumes, permissions). The `Dockerfile` here is ARM's plus A2RM's additions (current MakeMKV,
-optional QuickSync, Tesseract for title-card OCR), so building this repo gives you an A2RM image. A from-scratch
-build takes about 2 minutes without QuickSync and has been tested (builds, starts, tests pass); A2RM itself was
-developed by layering its files onto the ARM 2.24.4 Docker image. You don't need the `arm-dependencies` git
-submodule to build: the base image `automaticrippingmachine/arm-dependencies` comes from Docker Hub.
+A2RM runs in Docker, like ARM. There is no prebuilt A2RM image: you build it from this repo (about 2 minutes, or
+about 10 with QuickSync). The `Dockerfile` is ARM's plus A2RM's additions (current MakeMKV, optional QuickSync,
+Tesseract for title-card OCR). You don't need the `arm-dependencies` git submodule: the base image
+`automaticrippingmachine/arm-dependencies` comes from Docker Hub.
 
-The web UI's default login is **admin / password** (as in ARM; `DISABLE_LOGIN: false`). Change it after the first
-start. Like ARM, the home page (drives and recent rips) can be seen without logging in.
+> **Don't use the scripts in `scripts/installers/`** (`docker-setup.sh`, `DebianInstaller.sh`) or ARM's Docker Hub
+> image `automaticrippingmachine/automatic-ripping-machine`: they are ARM's and install plain ARM, not A2RM.
 
-Building the image:
+ARM's [wiki](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki) and
+[Docker guide](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki/docker) are still the best
+guide to the parts A2RM doesn't change: the `arm` user on the host, drive permissions, volumes, MakeMKV keys. A copy
+is in [`arm_wiki/`](arm_wiki).
 
-```bash
-docker build -t a2rm:latest .                                # current MakeMKV, CPU encoding
-docker build --build-arg INTEL_QSV=1 -t a2rm:latest .        # plus Intel QuickSync (~10 min longer)
-```
+1. **Build the image:**
+
+   ```bash
+   git clone https://github.com/pontiadic42/automatic-automatic-ripping-machine.git a2rm
+   cd a2rm
+   docker build -t a2rm:latest .                                # current MakeMKV, CPU encoding
+   docker build --build-arg INTEL_QSV=1 -t a2rm:latest .        # or: plus Intel QuickSync (~10 min longer)
+   ```
+
+2. **Create the container.** Replace the `<...>` parts. Pass in each optical drive you have:
+
+   ```bash
+   docker run -d --name arm-rippers --restart always \
+       -p 8080:8080 \
+       -e ARM_UID="$(id -u arm)" -e ARM_GID="$(id -g arm)" \
+       -e TZ="$(timedatectl show -p Timezone --value)" \
+       -v <arm home>:/home/arm \
+       -v <music folder>:/home/arm/music \
+       -v <logs folder>:/home/arm/logs \
+       -v <media folder>:/home/arm/media \
+       -v <config folder>:/etc/arm/config \
+       --device /dev/sr0:/dev/sr0 \
+       --privileged \
+       a2rm:latest
+   ```
+
+   `--privileged` is what ARM uses so the container can see discs being inserted. For QuickSync add
+   `--device /dev/dri/renderD128` (run `scripts/a2rm-host-check.sh` on the host for your exact lines).
+
+3. **Open the web UI** at `http://<server>:8080`. The default login is **admin / password** (as in ARM;
+   `DISABLE_LOGIN: false`); change it after the first start. Like ARM, the home page (drives and recent rips) can be
+   seen without logging in.
+
+4. **Set A2RM up** on **Settings > Automation**: at least your phone notifications (`NTFY_SERVER`, `NTFY_TOPIC`,
+   `ARM_PHONE_URL`) and, if you use it, Jellyfin. Every A2RM setting is described there and in
+   [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md#every-a2rm-setting).
+
+5. **Schedule the housekeeping** command shown under [Configuration](#configuration) (every 5 minutes from the
+   host's cron).
+
+6. **Check the setup:** `docker exec arm-rippers a2rm-check`.
+
+Coming from ARM? Point the new container at your existing volumes. The database and `arm.yaml` are used as they are
+(A2RM adds its settings to `arm.yaml` on first start and doesn't change the database schema), so you can go back to
+ARM the same way.
 
 | Build option | What it does |
 |---|---|
@@ -179,6 +224,13 @@ python3 -m pytest test/unittest
 
 The `test_automation_*` files cover the A2RM features. Expected result: everything passes except 6 of ARM's own
 tests (4 in `test_ripper_ARMInfo.py` that need a git checkout, 2 in `test_ripper_processhandler.py`).
+
+## Support
+
+A2RM is a personal project: there is no issue tracker and no Discord. ARM's GitHub, wiki and Discord are for ARM;
+please don't take A2RM questions there. Parts of the web UI that came from ARM (the Help tab, the footer link, the
+"update available" check) still point at ARM; changing them is on A2RM's to-do list.
+What changed in each A2RM build is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Credits
 

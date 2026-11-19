@@ -1,0 +1,26 @@
+name: "A2RM checks"
+
+# Lint on every push. The unit tests need ARM's Docker image (MakeMKV, HandBrake, abcde and its Python packages),
+# so they're run in that image instead; see README > Tests.
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    flake8:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.10"
+            - name: flake8
+              run: |
+                  pip install flake8
+                  flake8 . --max-complexity=15 --max-line-length=120 --count --statistics
