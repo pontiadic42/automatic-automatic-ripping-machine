@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
+{% block content %}
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {{ tabbar.settings_tabs("notifications") }}
+    <div class="arm-auto-status">
+        <span class="arm-pill {{ 'done' if status.ntfy else 'warn' }}">Phone notifications {{ 'on' if status.ntfy else 'off' }}</span>
+        {% if status.ntfy %}
+            <form method="post" action="{{ url_for('route_automation.test_ntfy') }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="arm-btn" type="submit">Send a test phone notification</button>
+            </form>
+        {% endif %}
+    </div>
+    {% with next_page = "/automation/settings?section=notifications" %}{% include "automation_fields.html" %}{% endwith %}
+
+    <section class="arm-card arm-auto-group" id="apprise">
+        <h2>Apprise</h2>
+        <div class="tab-content">{% include 'settings/apprise.html' %}</div>
+    </section>
+    <script type="application/javascript">
+        $(function () {
+            activeTab("armsettings");
+            $("#appriseTab").addClass("active show").removeClass("pt-5");
+            $("#appriseCfg").submit(function (event) {
+                event.preventDefault();
+                $.ajax({type: "POST", url: "/save_apprise_cfg", data: $("#appriseCfg").serialize()}).done(function (data) {
+                    if (data.success === true) {
+                        addToast("Saved", "Saved Apprise settings at " + new Date().toLocaleTimeString(), Date.now());
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 
 {% block content %}
+{{ tabbar.settings_tabs("system", "send") }}
 <style>
     .btn-group-vertical{
         display: none!important;

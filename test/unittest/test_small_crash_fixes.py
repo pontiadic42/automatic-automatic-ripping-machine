@@ -88,13 +88,13 @@ class TestGitCommitWithoutGit(unittest.TestCase):
 
 
 class TestActiveRipsPage(unittest.TestCase):
-    """/activerips: filter_by() with a positional expression raised TypeError"""
+    """/activerips (unlinked, used to crash) now goes to the home page, which lists active jobs (C38)"""
 
-    def test_page_builds_the_query(self):
-        with app.app_context(), app.test_request_context("/activerips"), \
-                patch.object(jobs_routes, "render_template", return_value="ok") as render:
-            self.assertEqual(jobs_routes.rips.__wrapped__(), "ok")
-        self.assertIn("jobs", render.call_args.kwargs)
+    def test_page_redirects_home(self):
+        with app.app_context(), app.test_request_context("/activerips"):
+            response = jobs_routes.rips.__wrapped__()
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.location.endswith("/"))
 
 
 class TestManualStartDevicePath(unittest.TestCase):

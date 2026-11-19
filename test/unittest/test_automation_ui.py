@@ -173,8 +173,8 @@ class TestSettingsPage(Temp):
     def test_page_renders(self):
         with patch.dict(app.config, {"LOGIN_DISABLED": True}), \
                 patch.dict(cfg.arm_config, {"NTFY_TOKEN": "tk_storedsecret", "JELLYFIN_API_KEY": "jfsecret"}):
-            html = self.client.get("/automation/settings").get_data(as_text=True)
-        self.assertIn("Phone notifications (ntfy)", html)
+            html = self.client.get("/automation/settings?section=notifications").get_data(as_text=True)
+        self.assertIn("Phone notifications (ntfy)", html)  # Settings > Notifications since C38
         self.assertIn('name="NTFY_TOKEN"', html)
         self.assertNotIn("tk_storedsecret", html)
         self.assertNotIn("jfsecret", html)

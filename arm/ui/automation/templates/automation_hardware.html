@@ -1,10 +1,9 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 {% block content %}
-    <div class="arm-head">
-        <h1>Hardware check</h1>
-        <span class="arm-faint" style="font-size:13px">Settings &gt; Automation &gt; Hardware check · GPU encoding for HandBrake</span>
-        <span class="arm-head-right"><a href="{{ url_for('route_automation.automation_settings') }}#g-hardware">Automation settings</a></span>
-    </div>
+    {{ tabbar.settings_tabs("hardware") }}
+    <p class="arm-faint" style="font-size:13px; margin-top:-8px">GPU encoding for HandBrake: the check, then the settings
+        (<a href="#g-hardware">Hardware encoding</a>).</p>
 
     <section class="arm-card arm-auto-group">
         <h2>Test encode</h2>
@@ -63,8 +62,8 @@
 
     <section class="arm-card arm-auto-group">
         <h2>Encoder presets for this machine</h2>
-        <p class="arm-muted" style="font-size:13px">Suggestions only: copy the options into HB_ARGS_DVD / HB_ARGS_BD on the
-            <a href="/settings">Settings</a> page if you want them.</p>
+        <p class="arm-muted" style="font-size:13px">Suggestions only: copy the options into HB_ARGS_DVD / HB_ARGS_BD under
+            <a href="/settings?tab=ripping">Settings &gt; Ripping</a> if you want them.</p>
         {% for s in r.suggestions %}
             <p style="margin:0 0 6px"><b>{{ s.title }}</b>{% if s.args %}: <code>{{ s.args }}</code>{% endif %}<br>
                 <span class="arm-muted" style="font-size:13px">{{ s.note }}</span></p>
@@ -89,5 +88,6 @@
             <button class="arm-btn" type="submit">Run the decode test</button>
         </form>
     </section>
+    {% with next_page = "/automation/hardware" %}{% include "automation_fields.html" %}{% endwith %}
     <script type="application/javascript">$(function () { activeTab("armsettings"); });</script>
 {% endblock %}

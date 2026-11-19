@@ -4,470 +4,406 @@
 {% block nav %}{{ super() }}{% endblock %}
 
 {% block content %}
+{#
+  Job page (C38): everything about one job on one page.
+  Header (poster, title, banners, season, confidence) · Identify · Files · Disc · Details.
+  Identify replaces the old title search / results / custom title pages; Details holds the old rip-settings page.
+#}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/job_details.css') }}">
     <style>
-        div.card div.background-poster {
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            /*
-            background-size: 100% 100%;
-            */
-            background-image: url({{ jobs.background }});
-        }
-
-        div.metacritic {
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            /*
-            background-size: 100% 100%;
-            */
-            background-color: #fc3;
-            border-radius: 50% !important;
-        }
-
+        div.metacritic { background-color: #fc3; border-radius: 50% !important; }
         div.internet-movie-database {
             background: url("https://m.media-amazon.com/images/S/sash/7n0KRCHny73GkBG.png") no-repeat 0 -80px;
-            padding-left: 20px;
-            font-weight: bolder;
+            padding-left: 20px; font-weight: bolder;
         }
-
         div.rotten-tomatoes {
             background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-fresh.149b5e8adc3.svg") no-repeat 0 0;
-            padding-left: 23px;
-            font-weight: bolder;
-            background-size: 33% 100%;
-            background-position: left;
+            padding-left: 23px; font-weight: bolder; background-size: 33% 100%; background-position: left;
         }
-
         div.rotten-tomatoes-rotten {
             background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-rotten.f1ef4f02ce3.svg") no-repeat 0 0;
-            padding-left: 23px;
-            font-weight: bolder;
-            background-size: 33% 100%;
-            background-position: left;
-
+            padding-left: 23px; font-weight: bolder; background-size: 33% 100%; background-position: left;
         }
-
-        div.ratings {
-            margin-top: -50px !important;
-        }
+        {% if jobs.background %}
+        .arm-job-hero { background-image: linear-gradient(var(--arm-hero-shade), var(--arm-hero-shade)), url({{ jobs.background }}); }
+        {% endif %}
     </style>
-    <!--{{s}}
-<br>
-<br>
-{{jobs}}
--->
-    <div class="container">
-        <div class="row">
-            <div class="col-sm-12">
-                <div class="table-responsive">
-                    <div class="card{{ ' text-center' if jobs.background is none  else '' }}">
-                        <!-- GF Comment -->
-                        <div class="card-header text-center">
-                            <h4>{{ jobs.title }} - {{ jobs.video_type.capitalize() }} ({{ jobs.year }})</h4>
-                            <div class="ratings float-right mt-0">
-                                <!-- Proof that just because you CAN doesnt mean you should! -->
-                                {% for ratings in s['Ratings'] %}
-                                    <div class="
-                                            {{ ratings['Source']|replace(' ', '-')|lower }}{{ '-rotten' if ratings['Source'] == 'Rotten Tomatoes' and ratings['Value']|replace('%','')| int < 60 else '' }}">
-                                        {{ ratings['Value'].split('/')[0] if '/' in ratings['Value'] else ratings['Value'] }}
-                                    </div>
-                                {% endfor %}
+    {% set is_music = jobs.video_type == "Music" %}
+    {% set conf_attention = (automation.attention or [])|selectattr("kind", "equalto", "confidence")|list if automation else [] %}
+    {% set title_unknown = (jobs.title_manual or jobs.title or "")|lower in ["", "none", "not identified"] %}
+
+    <div class="arm-job">
+        {# ---------- Header ---------- #}
+        <section class="arm-card arm-job-hero">
+            <div class="arm-job-top">
+                <a id="posterClick" href="#" class="arm-job-poster" title="Show the plot">
+                    {% if jobs.poster_url %}<img src="{{ jobs.poster_url }}" alt="Poster">
+                    {% else %}<img src="static/img/{{ 'music' if is_music else 'none' }}.png" alt="No poster">{% endif %}
+                </a>
+                <div class="arm-job-info">
+                    <h1>{{ jobs.title }} <span class="arm-faint">({{ jobs.year }})</span></h1>
+                    <p class="arm-job-pills">
+                        <span class="arm-pill">{{ "TV show" if jobs.video_type == "series" else (jobs.video_type or "")|capitalize }}</span>
+                        <span class="arm-pill">Job {{ jobs.job_id }}</span>
+                        <span class="arm-pill {{ 'done' if jobs.status == 'success' else ('bad' if jobs.status == 'fail' else 'now') }}">{{ jobs.status }}</span>
+                        {% if jobs.disctype %}<span class="arm-pill">{{ jobs.disctype }}</span>{% endif %}
+                        {% if jobs.label %}<span class="arm-pill">{{ jobs.label }}</span>{% endif %}
+                    </p>
+                    <div class="ratings">
+                        {% for ratings in s['Ratings'] %}
+                            <div class="{{ ratings['Source']|replace(' ', '-')|lower }}{{ '-rotten' if ratings['Source'] == 'Rotten Tomatoes' and ratings['Value']|replace('%','')| int < 60 else '' }}">
+                                {{ ratings['Value'].split('/')[0] if '/' in ratings['Value'] else ratings['Value'] }}
                             </div>
-                        </div>
-                        {% if not jobs.poster_url %}
-                            <div class="card-header background-poster">
-                                {% if jobs.video_type == "Music" %}
-                                    <a id="posterClick" href="#">
-                                    <img src="static/img/music.png" alt="Not found" width="240px" class="img-thumbnail"></a>
-                                {% else %}
-                                    <a id="posterClick" href="#">
-                                    <img src="static/img/none.png" alt="Not found" width="240px" class="img-thumbnail"></a>
-                                {% endif %}
-                                {% if jobs.video_type != "Music" %}
-                                    <div class="btn-group float-right mt-2" role="group">
-                                        <a href="titlesearch?job_id={{ jobs.job_id }}" class="btn btn-primary">Title
-                                            Search</a>
-                                        <a href="customTitle?job_id={{ jobs.job_id }}" class="btn btn-primary">Custom
-                                            Title</a>
-                                        <a id="plot" class="btn btn-primary">Plot</a>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <div class="card-header background-poster">
-                                <a id="posterClick" href="#">
-                                    <img src="{{ jobs.poster_url }}" width="240px" class="img-thumbnail"
-                                         alt="Movie Poster"></a>
-                                {% if jobs.video_type != "Music" %}
-                                    <div class="btn-group float-right mt-2" role="group">
-                                        <a href="titlesearch?job_id={{ jobs.job_id }}" class="btn btn-primary">Title
-                                            Search</a>
-                                        <a href="customTitle?job_id={{ jobs.job_id }}" class="btn btn-primary">Custom
-                                            Title</a>
-                                        <a id="plot" class="btn btn-primary">Plot</a>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                        <div id="plotInfo" class="alert alert-info text-center" style="display: none;" role="alert">
-                            <h4 class="alert-heading">Plot for {{ jobs.title }}</h4>
-                            <hr>
-                            <p class="mb-0">{{ jobs.plot }}</p>
-                        </div>
-                        {% include "automation_card.html" %}
-                        <div class="card-body">
-                            <table id="jobtable" class="table table-striped" aria-label="Job details">
-                                <thead class="bg-secondary">
-                                <tr>
-                                    <th scope="col" style="text-align:left">Field</th>
-                                    <th scope="col" style="text-align:left">Value</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr>
-                                    <td style="text-align:left"><strong>job_id</strong></td>
-                                    <td style="text-align:left">{{ jobs.job_id }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>arm_version</strong></td>
-                                    <td style="text-align:left">{{ jobs.arm_version }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>crc_id</strong></td>
-                                    <td style="text-align:left">{{ jobs.crc_id }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>logfile</strong></td>
-                                    <td style="text-align:left"><a
-                                            href="logs?logfile={{ jobs.logfile }}&mode=full">{{ jobs.logfile }}</a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>disc</strong></td>
-                                    <td style="text-align:left">{{ jobs.disc }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>start_time</strong></td>
-                                    <td style="text-align:left">{{ jobs.start_time }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>stop_time</strong></td>
-                                    <td style="text-align:left">{{ jobs.stop_time }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>job_length</strong></td>
-                                    <td style="text-align:left">{{ jobs.job_length }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>status</strong></td>
-                                    <td style="text-align:left">{{ jobs.status }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>video_type</strong></td>
-                                    <td style="text-align:left">{{ jobs.video_type }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>video_type_auto</strong></td>
-                                    <td style="text-align:left">{{ jobs.video_type_auto }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>video_type_manual</strong></td>
-                                    <td style="text-align:left">{{ jobs.video_type_manual }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>title</strong></td>
-                                    <td style="text-align:left">{{ jobs.title }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>title_auto</strong></td>
-                                    <td style="text-align:left">{{ jobs.title_auto }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>title_manual</strong></td>
-                                    <td style="text-align:left">{{ jobs.title_manual }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>year</strong></td>
-                                    <td style="text-align:left">{{ jobs.year }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>year_auto</strong></td>
-                                    <td style="text-align:left">{{ jobs.year_auto }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>year_manual</strong></td>
-                                    <td style="text-align:left">{{ jobs.year_manual }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>imdb_id</strong></td>
-                                    <td style="text-align:left">{{ jobs.imdb_id }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>imdb_id_auto</strong></td>
-                                    <td style="text-align:left">{{ jobs.imdb_id_auto }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>imdb_id_manual</strong></td>
-                                    <td style="text-align:left">{{ jobs.imdb_id_manual }}</td>
-                                </tr>
-                                {% if not jobs.poster_url %}
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url</strong></td>
-                                        <td style="text-align:left"><a href=""><img src="static/img/none.png"
-                                                                                    alt="Not found"
-                                                                                    title="static/img/none.png"
-                                                                                    width=50></a><br/>None
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url_auto</strong></td>
-                                        <td style="text-align:left"><a href=""><img src="static/img/none.png"
-                                                                                    alt="Not found"
-                                                                                    title="static/img/none.png"
-                                                                                    width=50></a><br/>None
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url_manual</strong></td>
-                                        <td style="text-align:left"><a href=""><img src="static/img/none.png"
-                                                                                    alt="Not found"
-                                                                                    title="static/img/none.png"
-                                                                                    width=50> </a><br/>None
-                                        </td>
-                                    </tr>
-                                {% else %}
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url</strong></td>
-                                        <td style="text-align:left"><a href="{{ jobs.poster_url }}"><img
-                                                alt="Movie Poster"
-                                                src="{{ jobs.poster_url }}" title="{{ jobs.poster_url }}"
-                                                width=50></a><br/>{{ jobs.poster_url }}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url_auto</strong></td>
-                                        <td style="text-align:left"><a href="{{ jobs.poster_url_auto }}"><img
-                                                alt="Movie Poster"
-                                                src="{{ jobs.poster_url_auto }}" title="{{ jobs.poster_url_auto }}"
-                                                width=50></a><br/>{{ jobs.poster_url_auto }}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>poster_url_manual</strong></td>
-                                        <td style="text-align:left"><a href="{{ jobs.poster_url_manual }}"><img
-                                                alt="Movie Poster"
-                                                src="{{ jobs.poster_url_manual }}" title="{{ jobs.poster_url_manual }}"
-                                                width=50> </a><br/>{{ jobs.poster_url_manual }}
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                                <tr>
-                                    <td style="text-align:left"><strong>devpath</strong></td>
-                                    <td style="text-align:left">{{ jobs.devpath }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>mountpoint</strong></td>
-                                    <td style="text-align:left">{{ jobs.mountpoint }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>hasnicetitle</strong></td>
-                                    <td style="text-align:left">{{ jobs.hasnicetitle }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>errors</strong></td>
-                                    <td style="text-align:left">{{ jobs.errors }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>disctype</strong></td>
-                                    <td style="text-align:left">{{ jobs.disctype }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>label</strong></td>
-                                    <td style="text-align:left">{{ jobs.label }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>ejected</strong></td>
-                                    <td style="text-align:left">{{ jobs.ejected }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>pid</strong></td>
-                                    <td style="text-align:left">{{ jobs.pid }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>pid hash</strong></td>
-                                    <td style="text-align:left">{{ jobs.pid_hash }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>path</strong></td>
-                                    <td style="text-align:left">{{ jobs.path }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:left"><strong>Config ID</strong></td>
-                                    <td style="text-align:left"> {{ jobs.config.CONFIG_ID }}</td>
-                                </tr>
-                                {% if jobs.video_type != "Music" %}
-                                    <tr>
-                                        <td style="text-align:left"><strong>HB_PRESET_DVD</strong></td>
-                                        <td style="text-align:left"> {{ jobs.config.HB_PRESET_DVD }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>HB_ARGS_DVD</strong></td>
-                                        <td style="text-align:left"> {{ jobs.config.HB_ARGS_DVD }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>HB_PRESET_BD</strong></td>
-                                        <td style="text-align:left">{{ jobs.config.HB_PRESET_BD }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>HB_ARGS_BD</strong></td>
-                                        <td style="text-align:left">{{ jobs.config.HB_ARGS_BD }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left"><strong>Drive Mode</strong></td>
-                                        <td style="text-align:left">
-                                            {% if jobs.manual_mode %}
-                                                Manual
-                                            {% else %}
-                                                Auto
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                                </tbody>
-                            </table>
-                            <hr class="test d-none">
-                            <form method="POST" action="/jobdetailload?job_id={{ jobs.job_id }}">
-                                <table id="tracktable" class="table table-striped" aria-label="Tracks">
-                                    <thead class="bg-secondary">
-                                    <tr>
-                                        <th scope="col" style="text-align:left">Track #</th>
-                                        {% if jobs.video_type == "Music" %}
-                                            <th scope="col" style="text-align:left">Track Name</th>
-                                        {% endif %}
-                                        <th scope="col" style="text-align:left">
-                                            <button type="button" id="toggle-time-format" class="btn btn-primary" title="Click to toggle time format">
-                                                <span id="time-format-label">seconds</span>
-                                            </button>
-                                        </th>
-                                        <th scope="col" style="text-align:left">FPS</th>
-                                        <th scope="col" style="text-align:left">Aspect Ratio</th>
-                                        <th scope="col" style="text-align:left">Main Feature</th>
-                                        {% if jobs.video_type != "Music" %}
-                                            <th scope="col" style="text-align:left">Manual Process</th>
-                                        {% endif %}
-                                        <th scope="col" style="text-align:left">Ripped</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for track in tracks %}
-                                        <tr>
-                                            <td style="text-align:left"><strong>{{ track.track_number }}</strong></td>
-                                            {% if jobs.video_type == "Music" %}
-                                                <td style="text-align:left"><strong>{{ track.filename}}</strong></td>
-                                            {% endif %}
-                                            <td style="text-align:left">
-                                                <span class="length-seconds">{{ track.length }}{{ " (Milliseconds)" if jobs.video_type == "Music" else "" }}</span>
-                                                <span class="length-formatted" style="display:none;" data-seconds="{{ track.length }}"></span>
-                                            </td>
-                                            <td style="text-align:left">{{ track.fps }}</td>
-                                            <td style="text-align:left">{{ track.aspect_ratio }}</td>
-                                            <td style="text-align:left">{{ track.main_feature }}</td>
-                                            {% if jobs.video_type != "Music" %}
-                                                <td style="text-align:center">
-                                                        {{ form.track_ref[loop.index0].checkbox }}
-                                                        {{ form.track_ref[loop.index0].track_ref }}
-                                                </td>
-                                            {% endif %}
-                                            <td style="text-align:left">{{ track.ripped }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
-                                {% if manual_edit  %}
-                                    {{ form.hidden_tag() }}
-                                    <button type="submit" class="btn btn-primary btn-sm" name="submit">Update</button>
-                                {% endif %}
-                            </form>
-                        </div>
+                        {% endfor %}
                     </div>
+                    <p class="arm-job-buttons">
+                        <a id="plot" class="arm-btn" href="#">Plot</a>
+                        {% if not is_music %}<a class="arm-btn" href="#identify" data-open="identify">Change title</a>{% endif %}
+                        {% if jobs.logfile %}<a class="arm-btn" href="logs?logfile={{ jobs.logfile }}&mode=full">Log</a>{% endif %}
+                        <a class="arm-btn" href="#details" data-open="details">Details</a>
+                    </p>
+                    <div id="plotInfo" class="arm-job-plot" style="display: none;">{{ jobs.plot }}</div>
                 </div>
             </div>
-        </div>
+            {% with card_part = "head" %}{% include "automation_card.html" %}{% endwith %}
+        </section>
+
+        {# ---------- Identify (old title search, results, custom title) ---------- #}
+        {% if not is_music %}
+        <details class="arm-card arm-job-section" id="identify" {{ 'open' if search.q or search.pick or conf_attention or title_unknown }}>
+            <summary><h2>Identify</h2><span class="arm-faint">Search TMDb or type the title yourself</span></summary>
+            <div class="arm-job-body">
+                <form id="idSearch" class="arm-id-search" autocomplete="off">
+                    <input type="search" name="title" value="{{ search.q or jobs.title or '' }}" placeholder="Title" aria-label="Title" required>
+                    <input type="text" name="year" value="{{ search.year if search.q else (jobs.year or '') }}" placeholder="Year" aria-label="Year" size="5" maxlength="4">
+                    <select name="type" aria-label="Search for">
+                        {% for value, label in search_types.items() %}
+                            <option value="{{ value }}" {{ 'selected' if value == search.type }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="arm-btn arm-btn-primary" type="submit">Search</button>
+                </form>
+                <p id="idMessage" class="arm-muted" style="font-size:13px"></p>
+                <div id="idResults" class="arm-poster-grid"></div>
+                <div id="idPick" class="arm-id-pick" hidden></div>
+
+                <h3 class="arm-auto-h">Or type it</h3>
+                <form method="get" action="{{ url_for('route_jobs.customtitle') }}" class="arm-id-custom">
+                    <input type="hidden" name="job_id" value="{{ jobs.job_id }}">
+                    <input name="title" value="{{ jobs.title if jobs.title and jobs.title|lower not in ['none', 'not identified'] else '' }}" placeholder="Title" aria-label="Title" required>
+                    <input name="year" value="{{ jobs.year or '' }}" placeholder="Year" aria-label="Year" size="5">
+                    <select name="type" aria-label="Movie or TV show">
+                        {% for value, label in video_types.items() %}
+                            <option value="{{ value }}" {{ 'selected' if value == jobs.video_type }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="arm-btn" type="submit">Use this title</button>
+                </form>
+                <p class="arm-faint" style="font-size:12px">For discs that aren't on TMDb, or TV box sets with several discs.
+                    A new title on a finished job also moves and renames its files.</p>
+            </div>
+        </details>
+        {% endif %}
+
+        {# ---------- Files ---------- #}
+        {% set has_files = editor or (automation and (automation.versions or automation.files or automation.jellyfin)) %}
+        {% if has_files %}
+        <details class="arm-card arm-job-section" id="files" open>
+            <summary><h2>Files</h2>
+                <span class="arm-faint">{% if editor %}{{ editor.item.id }}{% else %}What ARM wrote{% endif %}</span></summary>
+            <div class="arm-job-body">
+                {% with card_part = "files" %}{% include "automation_card.html" %}{% endwith %}
+                {% if editor %}
+                    {% with item=editor.item, v=editor.v, files=editor.files, preview=editor.preview, others=editor.others,
+                            size_text=editor.size_text, error=editor.error, back=jobs.job_id %}
+                        {% include "library_editor.html" %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+        </details>
+        {% endif %}
+
+        {# ---------- Disc ---------- #}
+        {% if automation and (automation.still_urls or automation.encoder or automation.already_ripped or (automation.titles and automation.titles.titles)) %}
+        <details class="arm-card arm-job-section" id="disc" open>
+            <summary><h2>Disc</h2><span class="arm-faint">Titles, stills, encoder</span></summary>
+            <div class="arm-job-body">
+                {% with card_part = "disc" %}{% include "automation_card.html" %}{% endwith %}
+            </div>
+        </details>
+        {% endif %}
+
+        {# ---------- Details (ARM's fields, tracks, rip settings) ---------- #}
+        <details class="arm-card arm-job-section" id="details" {{ 'open' if manual_edit }}>
+            <summary><h2>Details</h2><span class="arm-faint">ARM's record, tracks and rip settings</span></summary>
+            <div class="arm-job-body">
+                <div class="table-responsive">
+                <table id="jobtable" class="table table-striped" aria-label="Job details">
+                    <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+                    <tbody>
+                    {% for field in ["job_id", "arm_version", "crc_id"] %}
+                        <tr><td><strong>{{ field }}</strong></td><td>{{ jobs[field] }}</td></tr>
+                    {% endfor %}
+                    <tr><td><strong>logfile</strong></td><td><a href="logs?logfile={{ jobs.logfile }}&mode=full">{{ jobs.logfile }}</a></td></tr>
+                    {% for field in ["disc", "start_time", "stop_time", "job_length", "status", "video_type", "video_type_auto",
+                                     "video_type_manual", "title", "title_auto", "title_manual", "year", "year_auto",
+                                     "year_manual", "imdb_id", "imdb_id_auto", "imdb_id_manual"] %}
+                        <tr><td><strong>{{ field }}</strong></td><td>{{ jobs[field] }}</td></tr>
+                    {% endfor %}
+                    {% for field in ["poster_url", "poster_url_auto", "poster_url_manual"] %}
+                        <tr><td><strong>{{ field }}</strong></td>
+                            <td>{% if jobs[field] %}<a href="{{ jobs[field] }}"><img alt="Poster" src="{{ jobs[field] }}" title="{{ jobs[field] }}" width=50></a><br/>{{ jobs[field] }}
+                                {% else %}<img src="static/img/none.png" alt="Not found" width=50><br/>None{% endif %}</td></tr>
+                    {% endfor %}
+                    {% for field in ["devpath", "mountpoint", "hasnicetitle", "errors", "disctype", "label", "ejected", "pid"] %}
+                        <tr><td><strong>{{ field }}</strong></td><td>{{ jobs[field] }}</td></tr>
+                    {% endfor %}
+                    <tr><td><strong>pid hash</strong></td><td>{{ jobs.pid_hash }}</td></tr>
+                    <tr><td><strong>path</strong></td><td>{{ jobs.path }}</td></tr>
+                    <tr><td><strong>Config ID</strong></td><td>{{ jobs.config.CONFIG_ID }}</td></tr>
+                    {% if not is_music %}
+                        <tr><td><strong>HB_PRESET_DVD</strong></td><td>{{ jobs.config.HB_PRESET_DVD }}</td></tr>
+                        <tr><td><strong>HB_ARGS_DVD</strong></td><td>{{ jobs.config.HB_ARGS_DVD }}</td></tr>
+                        <tr><td><strong>HB_PRESET_BD</strong></td><td>{{ jobs.config.HB_PRESET_BD }}</td></tr>
+                        <tr><td><strong>HB_ARGS_BD</strong></td><td>{{ jobs.config.HB_ARGS_BD }}</td></tr>
+                        <tr><td><strong>Drive Mode</strong></td><td>{{ "Manual" if jobs.manual_mode else "Auto" }}</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+                </div>
+
+                <h3 class="arm-auto-h">Tracks</h3>
+                <form method="POST" action="/jobdetailload?job_id={{ jobs.job_id }}">
+                    <div class="table-responsive">
+                    <table id="tracktable" class="table table-striped" aria-label="Tracks">
+                        <thead>
+                        <tr>
+                            <th scope="col">Track #</th>
+                            {% if is_music %}<th scope="col">Track Name</th>{% endif %}
+                            <th scope="col">
+                                <button type="button" id="toggle-time-format" class="arm-btn" title="Click to toggle time format">
+                                    <span id="time-format-label">seconds</span>
+                                </button>
+                            </th>
+                            <th scope="col">FPS</th>
+                            <th scope="col">Aspect Ratio</th>
+                            <th scope="col">Main Feature</th>
+                            {% if not is_music %}<th scope="col">Manual Process</th>{% endif %}
+                            <th scope="col">Ripped</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for track in tracks %}
+                            <tr>
+                                <td><strong>{{ track.track_number }}</strong></td>
+                                {% if is_music %}<td><strong>{{ track.filename }}</strong></td>{% endif %}
+                                <td>
+                                    <span class="length-seconds">{{ track.length }}{{ " (Milliseconds)" if is_music else "" }}</span>
+                                    <span class="length-formatted" style="display:none;" data-seconds="{{ track.length }}"></span>
+                                </td>
+                                <td>{{ track.fps }}</td>
+                                <td>{{ track.aspect_ratio }}</td>
+                                <td>{{ track.main_feature }}</td>
+                                {% if not is_music %}
+                                    <td style="text-align:center">
+                                        {{ form.track_ref[loop.index0].checkbox }}
+                                        {{ form.track_ref[loop.index0].track_ref }}
+                                    </td>
+                                {% endif %}
+                                <td>{{ track.ripped }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                    {% if manual_edit %}
+                        {{ form.hidden_tag() }}
+                        <button type="submit" class="arm-btn arm-btn-primary" name="submit">Update</button>
+                    {% endif %}
+                </form>
+
+                {% if params_form %}
+                <h3 class="arm-auto-h" id="rip-settings">Rip settings for this job</h3>
+                <form id="changeParams" class="arm-params">
+                    {{ params_form.hidden_tag() }}
+                    <label>{{ params_form.RIPMETHOD.label.text }} {{ params_form.RIPMETHOD(class="custom-select") }}</label>
+                    <label>{{ params_form.DISCTYPE.label.text }} {{ params_form.DISCTYPE(class="custom-select") }}</label>
+                    <label class="arm-params-check">{{ params_form.MAINFEATURE() }} {{ params_form.MAINFEATURE.label.text }}</label>
+                    <label>{{ params_form.MINLENGTH.label.text }} {{ params_form.MINLENGTH(class="form-control") }}</label>
+                    <label>{{ params_form.MAXLENGTH.label.text }} {{ params_form.MAXLENGTH(class="form-control") }}</label>
+                    <input name="mode" value="change_job_params" hidden>
+                    <input name="config_id" value="{{ jobs.config.CONFIG_ID }}" hidden>
+                    <button class="arm-btn" type="submit">Save rip settings</button>
+                    <span id="paramsSaved" class="arm-faint" style="font-size:12px"></span>
+                </form>
+                <p class="arm-faint" style="font-size:12px">Only matters before the rip starts (rip method, disc type, main feature only, title lengths).</p>
+                {% endif %}
+            </div>
+        </details>
     </div>
+
+    <script src="{{ url_for('static', filename='js/library_editor.js') }}"></script>
     <script type="application/javascript">
         $(function () {
-            $("#plot").click(function () {
-                $("#plotInfo").slideToggle(1000);
-            });
-            $("#posterClick").click(function () {
-                $("#plotInfo").slideToggle(1000);
+            $("#plot, #posterClick").click(function (event) {
+                event.preventDefault();
+                $("#plotInfo").slideToggle(400);
             });
 
-            // Function to convert seconds to HH:MM:SS format
+            // Open a section from a link (#identify, #files, #details, #rip-settings) or the address
+            function openSection(hash) {
+                if (!hash || hash.length < 2) { return; }
+                const target = document.getElementById(hash.slice(1));
+                if (!target) { return; }
+                const section = target.closest("details");
+                if (section) { section.open = true; }
+                target.scrollIntoView({block: "start"});
+            }
+            openSection(window.location.hash);
+            window.addEventListener("hashchange", function () { openSection(window.location.hash); });
+            $(document).on("click", "a[href^='#'][data-open]", function () {
+                const hash = "#" + this.dataset.open;
+                if (window.location.hash === hash) { openSection(hash); }
+            });
+
+            // ----- Identify: search, results grid (big posters, C36), pick, save -----
+            const jobId = "{{ jobs.job_id }}";
+            const results = document.getElementById("idResults");
+            const pick = document.getElementById("idPick");
+            const message = document.getElementById("idMessage");
+
+            function el(tag, cls, text) {
+                const node = document.createElement(tag);
+                if (cls) { node.className = cls; }
+                if (text !== undefined) { node.textContent = text; }
+                return node;
+            }
+
+            function search(params) {
+                if (!results) { return; }
+                message.textContent = "Searching…";
+                results.innerHTML = "";
+                pick.hidden = true;
+                $.getJSON("/identify/search", params).done(function (data) {
+                    message.textContent = data.message || (data.results.length + " result" + (data.results.length === 1 ? "" : "s") + ". Pick one to see the details.");
+                    data.results.forEach(function (r) {
+                        const card = el("button", "arm-poster-card");
+                        card.type = "button";
+                        if (r.poster) {
+                            const img = el("img", "arm-poster-img");
+                            img.src = r.poster; img.alt = ""; img.loading = "lazy";
+                            card.appendChild(img);
+                        } else {
+                            card.appendChild(el("div", "arm-poster-img", "No poster"));
+                        }
+                        card.appendChild(el("span", "arm-poster-name", r.title));
+                        card.appendChild(el("span", "arm-poster-meta", [r.year, r.type_label].filter(Boolean).join(" · ")));
+                        if (r.details) { card.appendChild(el("span", "arm-poster-meta", r.details)); }
+                        if (r.plot) { card.title = r.plot; }
+                        card.addEventListener("click", function () {
+                            results.querySelectorAll(".arm-poster-card").forEach(function (c) { c.classList.remove("chosen"); });
+                            card.classList.add("chosen");
+                            showPick(r.imdb_id);
+                        });
+                        results.appendChild(card);
+                    });
+                }).fail(function () { message.textContent = "The search failed. Try again."; });
+            }
+
+            function showPick(imdbId) {
+                pick.hidden = false;
+                pick.innerHTML = "";
+                pick.appendChild(el("p", "arm-muted", "Loading…"));
+                $.getJSON("/identify/details", {imdbID: imdbId}).done(function (d) {
+                    pick.innerHTML = "";
+                    if (d.error) { pick.appendChild(el("p", "arm-attn bad", d.error)); return; }
+                    const wrap = el("div", "arm-id-pick-inner");
+                    if (d.poster_big || d.poster) {
+                        const a = el("a"); a.href = d.poster || d.poster_big; a.target = "_blank"; a.rel = "noopener";
+                        const img = el("img", "arm-id-pick-poster"); img.src = d.poster_big || d.poster; img.alt = "Poster";
+                        a.appendChild(img); wrap.appendChild(a);
+                    }
+                    const info = el("div");
+                    info.appendChild(el("h3", "", d.title + (d.year ? " (" + d.year + ")" : "")));
+                    info.appendChild(el("p", "arm-faint", (d.type === "series" ? "TV show" : "Movie") + " · " + d.imdb_id));
+                    info.appendChild(el("p", "", d.plot || "No plot."));
+                    const form = el("form", "arm-id-use");
+                    form.method = "get"; form.action = "{{ url_for('route_jobs.updatetitle') }}";
+                    [["title", d.title], ["year", d.year], ["imdbID", d.imdb_id], ["type", d.type],
+                     ["poster", d.poster], ["job_id", jobId]].forEach(function (pair) {
+                        const input = el("input"); input.type = "hidden"; input.name = pair[0]; input.value = pair[1] || "";
+                        form.appendChild(input);
+                    });
+                    if (d.seasons && d.seasons.length) {
+                        const season = el("select", "custom-select"); season.name = "season"; season.setAttribute("aria-label", "Season");
+                        season.appendChild(new Option("Season: guess from the disc label", ""));
+                        d.seasons.forEach(function (s) {
+                            season.appendChild(new Option(s.name + (s.year ? " (" + s.year + (s.episodes ? ", " + s.episodes + " episodes" : "") + ")" : ""), s.number));
+                        });
+                        const first = el("input", "form-control"); first.type = "number"; first.min = "1"; first.name = "first_episode";
+                        first.placeholder = "First episode on this disc"; first.setAttribute("aria-label", "First episode on this disc");
+                        form.appendChild(season); form.appendChild(first);
+                    }
+                    const use = el("button", "arm-btn arm-btn-primary", "Use this title"); use.type = "submit";
+                    const back = el("button", "arm-btn", "Back to the results"); back.type = "button";
+                    back.addEventListener("click", function () { pick.hidden = true; results.scrollIntoView({block: "nearest"}); });
+                    form.appendChild(use); form.appendChild(back);
+                    info.appendChild(form);
+                    wrap.appendChild(info);
+                    pick.appendChild(wrap);
+                    pick.scrollIntoView({block: "nearest"});
+                }).fail(function () { pick.innerHTML = ""; pick.appendChild(el("p", "arm-attn bad", "Couldn't load the details.")); });
+            }
+
+            $("#idSearch").on("submit", function (event) {
+                event.preventDefault();
+                const form = this;
+                search({job_id: jobId, title: form.title.value, year: form.year.value, type: form.type.value});
+            });
+            {% if search.q %}search({job_id: jobId, title: {{ search.q|tojson }}, year: {{ search.year|tojson }}, type: {{ search.type|tojson }}});{% endif %}
+            {% if search.pick %}showPick({{ search.pick|tojson }});{% endif %}
+
+            // ----- Rip settings (was the /changeparams page) -----
+            $("#changeParams").submit(function (event) {
+                event.preventDefault();
+                $.ajax({type: "GET", url: "/json", data: $(this).serialize()}).done(function (data) {
+                    const time = new Date().toLocaleTimeString();
+                    $("#paramsSaved").text(data.success === true ? "Saved at " + time : "Not saved: " + (data.message || "error"));
+                });
+            });
+
+            // ----- Track lengths: seconds / HH:MM:SS -----
             function secondsToHHMMSS(seconds) {
                 if (!seconds) return "00:00:00";
-                
-                // Check if the video type is Music (which stores duration in milliseconds)
                 const isMusic = "{{ jobs.video_type }}" === "Music";
                 let secondsValue = parseInt(seconds, 10);
-                
-                // Convert milliseconds to seconds for music tracks
-                if (isMusic) {
-                    secondsValue = Math.round(secondsValue / 1000);
-                }
-                
+                if (isMusic) { secondsValue = Math.round(secondsValue / 1000); }
                 const hours = Math.floor(secondsValue / 3600);
                 const minutes = Math.floor((secondsValue % 3600) / 60);
                 const remainingSeconds = Math.floor(secondsValue % 60);
-                
-                // If it's a short track with no hours, just show MM:SS
                 if (hours === 0) {
                     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
                 }
-                
                 return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
             }
-
-            // Convert all length values to HH:MM:SS and store them
-            $('.length-formatted').each(function() {
-                const seconds = $(this).data('seconds');
-                $(this).text(secondsToHHMMSS(seconds));
-            });
-
-            // Handle time format toggle
+            $('.length-formatted').each(function () { $(this).text(secondsToHHMMSS($(this).data('seconds'))); });
             let showFormatted = false;
-            $('#toggle-time-format').click(function() {
-                showFormatted = !showFormatted;
-                if (showFormatted) {
-                    $('.length-seconds').hide();
-                    $('.length-formatted').show();
-                    $('#time-format-label').text('HH:MM:SS');
-                } else {
-                    $('.length-seconds').show();
-                    $('.length-formatted').hide();
-                    $('#time-format-label').text('seconds');
-                }
-                
-                // Store preference in local storage
-                localStorage.setItem('arm_show_formatted_time', showFormatted);
-            });
-            
-            // Check if there's a saved preference
-            if (localStorage.getItem('arm_show_formatted_time') === 'true') {
-                showFormatted = true;
-                $('.length-seconds').hide();
-                $('.length-formatted').show();
-                $('#time-format-label').text('HH:MM:SS');
+            function applyFormat() {
+                $('.length-seconds').toggle(!showFormatted);
+                $('.length-formatted').toggle(showFormatted);
+                $('#time-format-label').text(showFormatted ? 'HH:MM:SS' : 'seconds');
             }
+            $('#toggle-time-format').click(function () {
+                showFormatted = !showFormatted;
+                applyFormat();
+                try { localStorage.setItem('arm_show_formatted_time', showFormatted); } catch (e) { /* private mode */ }
+            });
+            try { showFormatted = localStorage.getItem('arm_show_formatted_time') === 'true'; } catch (e) { showFormatted = false; }
+            applyFormat();
         });
-
     </script>
 {% endblock %}
 {% block footer %}{{ super() }}{% endblock %}
 {% block js %}
     {{ super() }}
-
 {% endblock %}

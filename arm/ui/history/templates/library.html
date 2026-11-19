@@ -1,10 +1,8 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 {% block content %}
-    <div class="arm-head">
-        <h1>Library</h1>
-        <span class="arm-faint" style="font-size:13px">{{ pages.total }} job{{ "" if pages.total == 1 else "s" }}</span>
-        <span class="arm-head-right"><a class="arm-btn" href="{{ url_for('route_library_files.files') }}">Manage files</a></span>
-    </div>
+    {{ tabbar.library_tabs("titles") }}
+    <p class="arm-faint" style="font-size:13px; margin-top:-8px">{{ pages.total }} job{{ "" if pages.total == 1 else "s" }}</p>
     <div class="arm-chips">
         {% for name, label in filter_names.items() %}
             <a class="arm-chip{% if name == selected %} active{% endif %}"

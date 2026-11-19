@@ -47,7 +47,6 @@ class TestCustomTitleIsCleaned(unittest.TestCase):
                 patch.object(jobs_routes.Job, "query", query), \
                 patch.object(jobs_routes.ui_utils, "job_id_validator"), \
                 patch.object(jobs_routes.ui_utils, "database_updater") as updater, \
-                patch.object(jobs_routes, "TitleSearchForm"), \
                 patch.object(jobs_routes, "Notifications"), \
                 patch.object(jobs_routes.db.session, "add"), \
                 patch.object(jobs_routes, "flash"), \

@@ -75,17 +75,44 @@ def _form_roles():
     return roles
 
 
+def editor_context(item_id, found=None, values=None, roles=None, preview=None, error=None):
+    """What library_editor.html needs for one item (used here and on the job page's Files section)"""
+    found = found or library.find(item_id)
+    values = values or library.defaults(found)
+    roles = roles or library.default_roles(found["id"], values.get("kind") or "movie")
+    base = library.absolute(found["id"])
+    base = base if os.path.isdir(base) else os.path.dirname(base)
+    file_list = [{"rel": rel, "role": role, "size": size_text(max(0, library._size(os.path.join(base, rel))))}
+                 for rel, role in sorted(roles.items(), key=lambda pair: library._episode_order(pair[0]))]
+    others = library.same_title(found, (library.store.load_state().get("library") or {}).get("items", []))
+    return {"item": found, "v": values, "files": file_list, "preview": preview, "others": others,
+            "size_text": size_text, "roles": library.ROLES, "error": error}
+
+
+def _job_files(job_id):
+    return url_for("route_jobs.jobdetail", job_id=job_id) + "#files"
+
+
 @route_library_files.route('/library/files/item', methods=['GET', 'POST'])
 @login_required
 def item():
+    """One library item. Items from a job are edited on the job page (C37); this page is for the rest.
+    POST partial=1 (from the job page) returns just the editor."""
     item_id = request.values.get("id", "")
     session["page_title"] = "Manage files"
+    partial = request.values.get("partial") == "1"
     try:
         found = library.find(item_id)
     except library.LibraryError as error:
+        if partial:
+            return f'<p class="arm-attn bad">{error}</p>'
         flash(str(error), "danger")
         return redirect(url_for("route_library_files.files"))
-    values, roles, preview = library.defaults(found), None, None
+    if request.method == "GET" and found.get("job_id") and request.args.get("here") != "1":
+        return redirect(_job_files(found["job_id"]))
+    done = (_job_files(found["job_id"]) if request.values.get("back") and found.get("job_id")
+            else url_for("route_library_files.files"))
+    values, roles, preview, error = None, None, None, None
     if request.method == "POST":
         action = request.form.get("action")
         values, roles = _form_values(), _form_roles()
@@ -100,20 +127,18 @@ def item():
                 entry = library.apply(found["id"], values, roles)
                 flash(f"Done: {entry['summary']} ({len(entry['moves'])} file(s) moved"
                       + (f", {len(entry['left'])} already there left in place" if entry["left"] else "")
-                      + "). Undo it from the list of changes.", "success")
-                return redirect(url_for("route_library_files.files"))
+                      + "). Undo it from Library > Files.", "success")
+                return redirect(done)
             preview = library.plan(found["id"], values, roles)
             roles = preview["roles"]
-        except library.LibraryError as error:
-            flash(str(error), "danger")
-    roles = roles or library.default_roles(found["id"], values.get("kind") or "movie")
-    base = library.absolute(found["id"])
-    base = base if os.path.isdir(base) else os.path.dirname(base)
-    file_list = [{"rel": rel, "role": role, "size": size_text(max(0, library._size(os.path.join(base, rel))))}
-                 for rel, role in sorted(roles.items(), key=lambda pair: library._episode_order(pair[0]))]
-    others = library.same_title(found, (library.store.load_state().get("library") or {}).get("items", []))
-    return render_template("library_item.html", item=found, v=values, files=file_list, preview=preview,
-                           others=others, size_text=size_text, roles=library.ROLES)
+        except library.LibraryError as err:
+            error = str(err)
+            if not partial:
+                flash(error, "danger")
+    context = editor_context(found["id"], found, values, roles, preview, error)
+    if partial:
+        return render_template("library_editor.html", back=request.values.get("back", ""), **context)
+    return render_template("library_item.html", back="", **context)
 
 
 @route_library_files.route('/library/files/search')

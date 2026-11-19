@@ -1,5 +1,9 @@
 {% if automation %}
-<div class="arm-auto-card">
+{# card_part (job page sections, C38): head = banners, season, confidence; disc = stills, encoder, titles;
+   files = language versions, files, Jellyfin. Unset = everything. #}
+{% set p = card_part|default("all") %}
+<div class="arm-auto-card arm-auto-part-{{ p }}">
+{% if p in ("all", "head") %}
     {% set finished = jobs.status in ["success", "fail"] %}
     {% set title_known = (jobs.title_manual or jobs.title or "")|lower not in ["", "none", "not identified"] %}
     {% if jobs.status == "waiting" and start_now_buttons %}
@@ -19,7 +23,7 @@
                         <button type="button" class="arm-btn" data-card-action="use_suggestion">Use {{ s.title }}{% if s.year %} ({{ s.year }}){% endif %}{% if s.video_type == "series" %}, TV show{% endif %}</button>
                     {% endif %}
                     {% if title_known %}<button type="button" class="arm-btn" data-card-action="accept">Accept title</button>{% endif %}
-                    <a class="arm-btn" href="titlesearch?job_id={{ jobs.job_id }}">Pick another</a>
+                    <a class="arm-btn" href="/jobdetail?job_id={{ jobs.job_id }}#identify">Pick another</a>
                     {% if not finished %}
                         <button type="button" class="arm-btn arm-btn-danger" data-card-action="cancel">Cancel job</button>
                     {% elif jobs.path and not automation.files_deleted %}
@@ -59,7 +63,8 @@
             }).catch(function () { button.disabled = false; });
         });
     </script>
-
+{% endif %}
+{% if p in ("all", "disc") %}
     {% if automation.still_urls %}
         <h3 class="arm-auto-h">Stills from the main file</h3>
         <p class="arm-faint" style="font-size:12px">To help you recognise the disc. The first one is near the start
@@ -71,7 +76,8 @@
             {% endfor %}
         </div>
     {% endif %}
-
+{% endif %}
+{% if p in ("all", "head") %}
     {% if automation.season_choices %}
         {% set chosen = automation.tv_season or {} %}
         <div class="arm-attn" id="season">
@@ -123,7 +129,8 @@
             </div>
         </div>
     {% endif %}
-
+{% endif %}
+{% if p in ("all", "disc") %}
     {% if automation.encoder %}
         {% set e = automation.encoder %}
         <p class="arm-muted" style="font-size:13px">
@@ -177,7 +184,8 @@
         </div>
         {% if automation.episodes %}<p class="arm-muted" style="font-size:13px">Episodes: {{ automation.episodes }}</p>{% endif %}
     {% endif %}
-
+{% endif %}
+{% if p in ("all", "files") %}
     {% if automation.versions %}
         <h3 class="arm-auto-h">Which version do you want to keep?</h3>
         <p class="arm-muted" style="font-size:13px">A2RM found {{ automation.versions | length }} versions of the movie
@@ -219,5 +227,6 @@
     {% if automation.jellyfin %}
         <p class="arm-muted" style="font-size:13px">Jellyfin: {{ automation.jellyfin.status }}{% if automation.jellyfin.item %} ({{ automation.jellyfin.item }}){% endif %}</p>
     {% endif %}
+{% endif %}
 </div>
 {% endif %}

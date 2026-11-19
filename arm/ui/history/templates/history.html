@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 
 {% block content %}
+{{ tabbar.library_tabs("history") }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/job_details.css') }}">
 <style>
     /*

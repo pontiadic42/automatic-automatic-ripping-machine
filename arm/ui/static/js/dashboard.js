@@ -167,10 +167,9 @@
         }
         const id = encodeURIComponent(job.job_id);
         let html = job.status === "waiting" && startNowOn() ? actionButton(job.job_id, "start_now", "Start now") : "";
-        html += `<a class="arm-btn" href="titlesearch?job_id=${id}">Title search</a>` +
-            `<a class="arm-btn" href="customTitle?job_id=${id}">Custom title</a>`;
+        html += `<a class="arm-btn" href="/jobdetail?job_id=${id}#identify">Change title</a>`;
         if (phaseOf(job) <= 1) {
-            html += `<a class="arm-btn" href="changeparams?config_id=${id}">Rip settings</a>`;
+            html += `<a class="arm-btn" href="/jobdetail?job_id=${id}#rip-settings">Rip settings</a>`;
         }
         html += `<a class="arm-btn" href="logs?logfile=${encodeURIComponent(job.logfile)}&mode=full">Log</a>` +
             `<button type="button" class="arm-btn arm-btn-danger" data-toggle="modal" data-target="#exampleModal" ` +
@@ -254,7 +253,7 @@
                 html += actionButton(jobId, "set_type", other === "series" ? "It's a TV show" : "It's a movie",
                     ` data-type="${other}"`);
             }
-            html += `<a class="arm-btn" href="titlesearch?job_id=${id}">Pick another</a>`;
+            html += `<a class="arm-btn" href="/jobdetail?job_id=${id}#identify">Pick another</a>`;
             if (info.video_type === "series") {
                 html += `<a class="arm-btn" href="/jobdetail?job_id=${id}#season">Pick season</a>`;
             }
@@ -319,8 +318,7 @@
             html += `<div class="arm-attn">
                 <span>${esc(jobTitle(job))} couldn't be identified. A2RM will rip it as-is unless you set a title.</span>
                 <span class="arm-attn-actions">${window.ARM_AUTHENTICATED && startNowOn() ? actionButton(job.job_id, "start_now", "Start now") : ""}
-                <a href="titlesearch?job_id=${id}">Search title</a>
-                <a href="customTitle?job_id=${id}">Custom title</a></span></div>`;
+                <a href="/jobdetail?job_id=${id}#identify">Change title</a></span></div>`;
         });
         const dayAgo = Date.now() - 24 * 3600 * 1000;
         (recent || []).filter(function (job) {

@@ -20,7 +20,7 @@
             <span id="navviewlogs"><a href="/listlogs">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Logs</a></span>
-            <span id="navarmsettings"><a href="/settings">
+            <span id="navarmsettings"><a href="/automation/settings">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</a></span>
         </nav>
@@ -36,11 +36,7 @@
                         <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
                 </button>
                 <div class="arm-menu" id="armMoreMenu" role="menu">
-                    <a id="navautomation" href="/automation/settings" role="menuitem">Automation settings</a>
-                    <a id="navhistory" href="/history" role="menuitem">Job history table</a>
-                    <a id="navdatabase" href="/database" role="menuitem">Database</a>
-                    <a id="navsendmovies" href="/send_movies" role="menuitem">Send DVDs to API</a>
-                    <hr>
+                    {# Automation settings, Job history, Database and Send DVDs moved into the Settings and Library tabs (C38) #}
                     <label for="darkSwitch" role="menuitem">Dark mode <input type="checkbox" id="darkSwitch"/></label>
                     <a id="navchangepass" href="/update_password" role="menuitem">Change admin password</a>
                     <button type="button" id="restartUi" role="menuitem">Restart web UI</button>

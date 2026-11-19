@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 
 {% block content %}
+    {{ tabbar.settings_tabs(tab, "overview" if tab == "system" else None) }}
     <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     <style>
         .popover {
@@ -44,7 +46,8 @@
             <div class="col">
                 <div class="jumbotron" style="padding-top: 1rem;">
                     <!-- Nav Tabs -->
-                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    {# ARM's own tabs, hidden: the Settings tab bar above picks the panes (C38) #}
+                    <ul class="nav nav-tabs d-none" id="myTab" role="tablist">
                         <li class="nav-item" role="presentation">
                             <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
                                aria-controls="home" aria-selected="true">General Info</a>
@@ -93,8 +96,7 @@
                         {% include 'settings/ripper.html' %}
                         <!-- UI settings -->
                         {% include 'settings/ui.html' %}
-                        <!-- Apprise config -->
-                        {% include 'settings/apprise.html' %}
+                        <!-- Apprise config: Settings > Notifications (automation_notifications.html) -->
                         <!-- Help config -->
                         {% include 'settings/help.html' %}
                     </div>
@@ -156,6 +158,10 @@
                 {% endfor %}
             {% endif %}
             activeTab("armsettings");
+            // Show the panes of the chosen Settings tab (C38)
+            const panes = {{ panes|tojson }};
+            $(".tab-content > .tab-pane").removeClass("active show");
+            panes.forEach(function (id) { $("#" + id).addClass("active show"); });
         });
     </script>
 {% endblock %}

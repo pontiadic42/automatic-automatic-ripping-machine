@@ -223,18 +223,26 @@ class TestTypeRoutes(Temp):
         self.assertTrue(reply.get_json()["success"])
         self.assertEqual(job.title_manual, "Doctor Who")
 
-    def test_search_results_page_passes_the_type(self):
-        job = self.waiting_job()
-        query = MagicMock()
-        query.get.return_value = job
+    def test_search_passes_the_type(self):
+        """CHECK the job page's Identify search (was /list_titles) searches the chosen type and labels TV shows"""
         found = {"Search": [{"Title": "Doctor Who", "Type": "series", "Year": "2005", "imdbID": "tt0436992",
-                             "Poster": ""}]}
-        with patch.object(jobs_routes.Job, "query", query), patch.dict(app.config, {"LOGIN_DISABLED": True}), \
+                             "Poster": "https://image.tmdb.org/t/p/original/x.jpg"}]}
+        with patch.dict(app.config, {"LOGIN_DISABLED": True}), \
                 patch.object(jobs_routes.ui_utils, "metadata_selector", return_value=found) as selector:
-            html = self.client.get("/list_titles?title=dr+who&year=&job_id=41&type=series").get_data(as_text=True)
+            data = self.client.get("/identify/search?title=dr+who&year=&job_id=41&type=series").get_json()
         self.assertEqual(selector.call_args.kwargs["media_type"], "series")
-        self.assertIn("Doctor Who</strong> - TV show", html)
-        self.assertIn('<option value="series" selected>TV shows</option>', html)
+        self.assertEqual(data["results"][0]["type_label"], "TV show")
+        self.assertEqual(data["results"][0]["poster"], "https://image.tmdb.org/t/p/w342/x.jpg")
+
+    def test_old_results_page_opens_the_job_page(self):
+        """CHECK /list_titles redirects to the job page's Identify section with the search filled in (C38)"""
+        with patch.dict(app.config, {"LOGIN_DISABLED": True}):
+            reply = self.client.get("/list_titles?title=dr+who&year=&job_id=41&type=series")
+        self.assertEqual(reply.status_code, 302)
+        self.assertIn("/jobdetail?job_id=41", reply.location)
+        self.assertIn("q=dr+who", reply.location)
+        self.assertIn("type=series", reply.location)
+        self.assertTrue(reply.location.endswith("#identify"))
 
     def test_card_shows_the_switch_and_suggestion(self):
         store.update_job(41, confidence={"score": 0, "level": "low", "reasons": ["x"],

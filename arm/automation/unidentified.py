@@ -135,7 +135,7 @@ def after_move(job, final_directory):
                f"{final_directory}. A2RM's guess: {guess}. Accept it or pick the title and the files move."
                + ocr.hint(job.job_id))
     actions = [notify.http(f"It's {guess}"[:40], notify.action_url(job.job_id, "confirm")),
-               notify.view("Pick the title", notify.arm_url(f"/titlesearch?job_id={job.job_id}"))]
+               notify.view("Pick the title", notify.arm_url(f"/jobdetail?job_id={job.job_id}#identify"))]
     notify.in_app("Do you know this one?", message)
     notify.send("Do you know this one?", message, priority="default", tags=["dvd", "question"],
                 click=notify.job_link(job.job_id), actions=actions,

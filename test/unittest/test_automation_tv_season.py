@@ -123,18 +123,20 @@ class TestSeasonRoutes(Temp):
         job = SimpleNamespace(job_id=41, video_type="movie", title="It", title_manual=None, label="IT", finished=False)
         self.assertEqual(self.post(job, season="1").status_code, 400)
 
-    def test_pick_page_offers_seasons(self):
-        """CHECK the title page of a TV show has the Season drop-down"""
+    def test_pick_offers_seasons(self):
+        """CHECK picking a TV show on the job page (was /gettitle) returns its seasons"""
         details = {"Title": "Doctor Who", "Year": "2005", "imdbID": "tt0436992", "Type": "series",
                    "Poster": "", "Plot": ""}
         seasons = [{"number": 2, "name": "Series 2", "year": "2006", "episodes": 13}]
         with patch.object(jobs_routes.ui_utils, "metadata_selector", return_value=details), \
                 patch.object(tmdb, "season_choices", return_value=seasons), \
                 patch.dict(app.config, {"LOGIN_DISABLED": True}):
-            html = self.client.get("/gettitle?imdbID=tt0436992&job_id=41").get_data(as_text=True)
-        self.assertIn('name="season"', html)
-        self.assertIn("Series 2 (2006, 13 episodes)", html)
-        self.assertIn('name="first_episode"', html)
+            data = self.client.get("/identify/details?imdbID=tt0436992").get_json()
+            old = self.client.get("/gettitle?imdbID=tt0436992&job_id=41")
+        self.assertEqual(data["seasons"], seasons)
+        self.assertEqual(data["type"], "series")
+        self.assertIn("pick=tt0436992", old.location)
+        self.assertTrue(old.location.endswith("#identify"))
 
 
 if __name__ == '__main__':

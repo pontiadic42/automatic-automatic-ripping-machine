@@ -1,8 +1,9 @@
 """
 Automation pages:
 - /automation/act       buttons in phone notifications (signed links, no login needed)
-- /automation/settings  Settings > Automation
-- /automation/health    Settings > Automation > Library health
+- /automation/settings  Settings > A2RM (?section=notifications: Settings > Notifications)
+- /automation/hardware  Settings > Hardware
+- /automation/health    Library > Health
 - /automation/frame     still frames from finished files (to tell language versions apart)
 """
 import json
@@ -290,29 +291,46 @@ def _form_value(setting):
 @route_automation.route('/automation/settings', methods=['GET', 'POST'])
 @login_required
 def automation_settings():
-    session["page_title"] = "Automation"
+    """Settings > A2RM (and > Notifications with ?section=notifications). Each tab saves only its own groups."""
+    section = request.values.get("section", "a2rm")
+    section = section if section in SECTIONS else "a2rm"
+    session["page_title"] = "Settings"
     if request.method == "POST":
-        user_config = cfg._load_config(cfg.arm_config_path) or {}
-        changed = []
-        for setting in settings.SCHEMA:
-            raw = _form_value(setting)
-            if setting.kind == "secret" and raw == "":
-                continue  # empty = keep the stored secret
-            value = settings.coerce(setting, raw)
-            if user_config.get(setting.key) != value:
-                changed.append(setting.label)
-            user_config[setting.key] = value
-        with open(os.path.join(cfg.arm_config["INSTALLPATH"], "arm/ui/comments.json")) as handle:
-            comments = json.load(handle)
-        full = dict(cfg.template_config)
-        full.update(user_config)
-        cfg.write_config_file(cfg.arm_config_path, cfg._render_config(full, comments))
-        cfg.arm_config.update({s.key: user_config[s.key] for s in settings.SCHEMA if s.key in user_config})
-        flash(f"Saved {len(changed)} change{'s' if len(changed) != 1 else ''}. New discs use them right away."
-              if changed else "No changes.", "success")
-        return redirect(url_for("route_automation.automation_settings"))
+        posted = {g for g in request.form.get("_groups", "").split(",") if g}
+        saved = _save_groups(posted if "_groups" in request.form else set(_automation_groups()))
+        flash(f"Saved {len(saved)} change{'s' if len(saved) != 1 else ''}. New discs use them right away."
+              if saved else "No changes.", "success")
+        back = request.form.get("_next", "")
+        return redirect(back if back in SECTION_PAGES else url_for("route_automation.automation_settings"))
+    status = {"ntfy": settings.ntfy_enabled(), "jellyfin": settings.jellyfin_enabled(),
+              "last": store.load_state()}
+    if section == "notifications":
+        from arm.ui.forms import SettingsForm
+        from arm.ui.settings.settings import is_read_only
+        return render_template("automation_notifications.html", groups=settings_groups(SECTIONS[section]),
+                               group_ids=",".join(SECTIONS[section]), status=status, form=SettingsForm(),
+                               apprise_cfg=cfg.apprise_config,
+                               apprise_read_only=is_read_only(cfg.apprise_config_path))
+    return render_template("automation_settings.html", groups=settings_groups(SECTIONS[section]),
+                           group_ids=",".join(SECTIONS[section]), status=status)
+
+
+def _automation_groups():
+    return [group for group, _title in settings.GROUPS]
+
+
+# Which settings groups each Settings tab shows (C38); the rest of the A2RM groups are on the A2RM tab
+SECTIONS = {"notifications": ["notify"], "hardware": ["hardware"]}
+SECTIONS["a2rm"] = [g for g in _automation_groups() if g not in ("notify", "hardware")]
+SECTION_PAGES = {"/automation/settings", "/automation/settings?section=notifications", "/automation/hardware"}
+
+
+def settings_groups(only):
+    """The settings form's groups (only these ids), with each field's current value"""
     groups = []
     for group, title in settings.GROUPS:
+        if group not in only:
+            continue
         items = []
         for setting in settings.SCHEMA:
             if setting.group != group:
@@ -323,9 +341,32 @@ def automation_settings():
                           "languages": settings.language_choices(value) if setting.kind in ("lang", "langs") else None,
                           "selected": str(value).split(",") if setting.kind in ("lang", "langs") else None})
         groups.append({"id": group, "title": title, "fields": items})
-    status = {"ntfy": settings.ntfy_enabled(), "jellyfin": settings.jellyfin_enabled(),
-              "last": store.load_state()}
-    return render_template("automation_settings.html", groups=groups, status=status)
+    return groups
+
+
+def _save_groups(groups):
+    """Write the posted values of these groups' settings to arm.yaml; returns the labels that changed.
+    Only the groups on the page are read, so a tab can't reset another tab's checkboxes."""
+    groups = {g for g in groups if g} or set(_automation_groups())
+    user_config = cfg._load_config(cfg.arm_config_path) or {}
+    changed = []
+    for setting in settings.SCHEMA:
+        if setting.group not in groups:
+            continue
+        raw = _form_value(setting)
+        if setting.kind == "secret" and raw == "":
+            continue  # empty = keep the stored secret
+        value = settings.coerce(setting, raw)
+        if user_config.get(setting.key) != value:
+            changed.append(setting.label)
+        user_config[setting.key] = value
+    with open(os.path.join(cfg.arm_config["INSTALLPATH"], "arm/ui/comments.json")) as handle:
+        comments = json.load(handle)
+    full = dict(cfg.template_config)
+    full.update(user_config)
+    cfg.write_config_file(cfg.arm_config_path, cfg._render_config(full, comments))
+    cfg.arm_config.update({s.key: user_config[s.key] for s in settings.SCHEMA if s.key in user_config})
+    return changed
 
 
 def _checked_text(result):
@@ -339,7 +380,7 @@ def _checked_text(result):
 def hardware():
     """Settings > Automation > Hardware check (GPU, permissions, VA-API, HandBrake, test encode)"""
     from arm.automation import hwcheck, hwreport
-    session["page_title"] = "Hardware check"
+    session["page_title"] = "Settings"
     test = decode = None
     if request.method == "POST":
         report = hwreport.report()
@@ -351,7 +392,8 @@ def hardware():
     report["last_test"] = _checked_text(report["last_test"])
     report["last_decode"] = _checked_text(report["last_decode"])
     return render_template("automation_hardware.html", r=report, test=_checked_text(test),
-                           decode=_checked_text(decode))
+                           decode=_checked_text(decode),
+                           groups=settings_groups(SECTIONS["hardware"]), group_ids="hardware")
 
 
 @route_automation.route('/automation/health', methods=['GET', 'POST'])
@@ -359,7 +401,7 @@ def hardware():
 def library_health():
     """Settings > Automation > Library health: the last check's results; "Check now" runs one in the background"""
     from arm.automation import health
-    session["page_title"] = "Library health"
+    session["page_title"] = "Library"
     if request.method == "POST":
         if health.busy():
             flash("A disc is ripping or transcoding; check again when it's done.", "warning")
@@ -392,7 +434,7 @@ def test_ntfy():
                      click=notify.arm_url("/"))
     flash("Test notification sent." if ok else "Couldn't send it. Check the server and topic.",
           "success" if ok else "danger")
-    return redirect(url_for("route_automation.automation_settings"))
+    return redirect(url_for("route_automation.automation_settings", section="notifications"))
 
 
 @route_automation.route('/automation/still')

@@ -1,0 +1,28 @@
+{# Shared tab bars (C38): Library and Settings are one page each with tabs; each tab keeps its own address. #}
+{% macro bar(tabs, active, cls="arm-tabs") %}
+    <nav class="{{ cls }}" role="tablist">
+        {% for key, label, href in tabs %}
+            <a href="{{ href }}" role="tab" class="{{ 'active' if key == active }}"
+               aria-selected="{{ 'true' if key == active else 'false' }}">{{ label }}</a>
+        {% endfor %}
+    </nav>
+{% endmacro %}
+
+{% macro library_tabs(active) %}
+    <div class="arm-head"><h1>Library</h1></div>
+    {{ bar([("titles", "Titles", "/library"), ("files", "Files", "/library/files"),
+            ("health", "Health", "/automation/health"), ("history", "History", "/history")], active) }}
+{% endmacro %}
+
+{% macro settings_tabs(active, sub=None) %}
+    <div class="arm-head"><h1>Settings</h1></div>
+    {{ bar([("a2rm", "A2RM", "/automation/settings"), ("ripping", "Ripping", "/settings?tab=ripping"),
+            ("hardware", "Hardware", "/automation/hardware"),
+            ("notifications", "Notifications", "/automation/settings?section=notifications"),
+            ("music", "Music", "/settings?tab=music"), ("interface", "Interface", "/settings?tab=interface"),
+            ("system", "System", "/settings?tab=system"), ("help", "Help", "/settings?tab=help")], active) }}
+    {% if active == "system" %}
+        {{ bar([("overview", "Server and drives", "/settings?tab=system"), ("database", "Database", "/database"),
+                ("send", "Send DVDs to API", "/send_movies")], sub, "arm-tabs arm-subtabs") }}
+    {% endif %}
+{% endmacro %}

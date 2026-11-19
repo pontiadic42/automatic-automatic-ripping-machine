@@ -3,13 +3,10 @@ ARM route blueprint for jobs pages
 Covers
 - jobdetail [GET]
 - jobdetailload [POST]
-- titlesearch [GET]
-- custometitle [GET]
-- gettitle / customtitle [GET]
-- updatetitle [GET]
-- activerips [GET]
-- changeparams [GET]
-- list_titles [GET]
+- updatetitle / customTitle [GET]: save a title (from the job page's Identify section)
+- identify/search, identify/details [JSON GET]: Identify section
+- titlesearch, list_titles, gettitle, select_title, changeparams, activerips: old pages, now redirects
+  into the job page (C38)
 - json [JSON GET]
 """
 
@@ -24,7 +21,7 @@ from arm.ui import app, db, constants, json_api
 from arm.models.job import Job, JobState
 from arm.models.notifications import Notifications
 import arm.config.config as cfg
-from arm.ui.forms import TitleSearchForm, ChangeParamsForm, TrackFormDynamic
+from arm.ui.forms import ChangeParamsForm, TrackFormDynamic
 
 route_jobs = Blueprint('route_jobs', __name__,
                        template_folder='templates',
@@ -168,7 +165,27 @@ def jobdetail():
                            manual_edit=manual_edit,
                            form=track_form,
                            automation=_automation_view(job),
-                           start_now_buttons=_automation_setting("START_NOW_BUTTONS"))
+                           start_now_buttons=_automation_setting("START_NOW_BUTTONS"),
+                           params_form=ChangeParamsForm(obj=job.config) if job.config else None,
+                           search_types=SEARCH_TYPES, video_types=VIDEO_TYPES,
+                           search={"q": request.args.get("q") or "", "year": request.args.get("year") or "",
+                                   "type": _search_type() if request.args.get("type") else _default_search_type(job),
+                                   "pick": request.args.get("pick") or ""},
+                           editor=_files_editor(job))
+
+
+def _files_editor(job):
+    """Job page > Files: the library editor (C35/C37) for the job's folder, when it is in the library"""
+    from arm.automation import library
+    from arm.ui.automation import library_files
+    if getattr(job, "status", None) != JobState.SUCCESS.value or not getattr(job, "path", None):
+        return None
+    try:
+        item_id = library.item_of(job.path)
+        return library_files.editor_context(item_id) if item_id else None
+    except Exception as error:  # noqa: BLE001 - the rest of the page works without it
+        app.logger.info(f"Job {job.job_id}: no file editor ({error})")
+        return None
 
 
 @route_jobs.route('/jobdetailload', methods=['POST'])
@@ -223,33 +240,29 @@ def _default_search_type(job):
     return "series" if getattr(job, "video_type", None) == "series" else "both"
 
 
+def _job_page(job_id, section="", **params):
+    """The job page (C38: one page per job), opened at a section"""
+    return url_for('route_jobs.jobdetail', job_id=job_id, **params) + (f"#{section}" if section else "")
+
+
 @route_jobs.route('/titlesearch')
 @login_required
 def title_search():
-    """
-    The initial search page
-    """
-    job_id = request.args.get('job_id')
-    job = Job.query.get(job_id)
-    form = TitleSearchForm(request.args)
-    if form.validate():
-        flash(f'Search for {request.args.get("title")}, year={request.args.get("year")}', 'success')
-        return redirect(url_for('route_jobs.list_titles', title=request.args.get("title"),
-                                year=request.args.get("year"), job_id=job_id, type=_search_type()))
-    return render_template('titlesearch.html', title='Update Title', form=form, job=job,
-                           search_types=SEARCH_TYPES, media_type=_default_search_type(job))
+    """Old title search page: now the job page's Identify section (searches straight away when a title is given)"""
+    params = {"q": request.args.get("title"), "year": request.args.get("year"),
+              "type": request.args.get("type")} if request.args.get("title") else {}
+    return redirect(_job_page(request.args.get('job_id'), "identify", **params))
 
 
 @route_jobs.route('/customTitle')
 @login_required
 def customtitle():
     """
-    For setting custom title for series with multiple discs
+    For setting custom title for series with multiple discs (the form is in the job page's Identify section)
     """
     job_id = request.args.get('job_id')
     ui_utils.job_id_validator(job_id)
     job = Job.query.get(job_id)
-    form = TitleSearchForm(obj=job)
     if request.args.get("title"):
         # Clean the title like updatetitle does: it becomes part of folder and file names
         new_title = ui_utils.clean_for_filename(request.args.get("title"))
@@ -269,20 +282,15 @@ def customtitle():
         ui_utils.database_updater(args, job)
         flash(f'Custom title changed. Title={job.title}, Year={job.year}.', "success")
         _retitle_finished(job, old_path, old_base)
-        return redirect(url_for('home'))
-    return render_template('customTitle.html', title='Change Title', form=form, job=job, video_types=VIDEO_TYPES)
+        return redirect(_job_page(job.job_id))
+    return redirect(_job_page(job_id, "identify"))
 
 
 @route_jobs.route('/gettitle')
 @route_jobs.route('/select_title')
 @login_required
 def gettitle():
-    """
-    Used to display plot info from the search result page when the user clicks the title
-    and to forward the user to save the selected details
-
-    This was also used previously for the getdetails page but it no longer needed there
-    """
+    """Old result-details page: now a panel in the job page's Identify section"""
     imdb_id = request.args.get('imdbID').strip() if request.args.get('imdbID') else None
     job_id = request.args.get('job_id').strip() if request.args.get('job_id') else None
     if imdb_id == "" or imdb_id is None:
@@ -293,9 +301,56 @@ def gettitle():
         app.logger.debug("gettitle - no job supplied")
         flash(constants.NO_JOB, "danger")
         raise ValidationError(constants.NO_JOB)
-    dvd_info = ui_utils.metadata_selector("get_details", None, None, imdb_id)
-    seasons = _season_choices(imdb_id) if (dvd_info or {}).get("Type") == "series" else []
-    return render_template('showtitle.html', results=dvd_info, job_id=job_id, seasons=seasons)
+    return redirect(_job_page(job_id, "identify", pick=imdb_id))
+
+
+def _poster(url, size):
+    """A TMDb poster at another size (w185, w342, ...); other URLs as they are"""
+    url = url or ""
+    return url.replace("/t/p/original/", f"/t/p/{size}/") if "/t/p/original/" in url else url
+
+
+@route_jobs.route('/identify/search')
+@login_required
+def identify_search():
+    """Job page > Identify: search results as JSON (same search as the old results page)"""
+    title = (request.args.get('title') or '').strip()[:200]
+    year = (request.args.get('year') or '').strip()[:4]
+    media_type = _search_type()
+    if not title:
+        return {"results": [], "message": "Type a title to search for."}
+    results = ui_utils.metadata_selector("search", title, year, media_type=media_type)
+    message = ""
+    if results is None or 'Error' in results or ('Search' in results and len(results['Search']) < 1):
+        if year:
+            message = f"Nothing found for {title} ({year}), so this is without the year."
+            results = ui_utils.metadata_selector("search", title, "", media_type=media_type)
+    found = [res for res in (results or {}).get("Search") or []
+             if "Type" in res and str(res["Type"]).lower() != "game"]
+    if not found:
+        message = f"Nothing found for {title}."
+    return {"message": message, "results": [
+        {"title": res.get("Title") or "", "year": res.get("Year") or "", "imdb_id": res.get("imdbID") or "",
+         "type": str(res.get("Type") or "").lower(),
+         "type_label": "TV show" if str(res.get("Type")).lower() == "series" else str(res.get("Type")).capitalize(),
+         "poster": _poster(res.get("Poster"), "w342") if str(res.get("Poster") or "").startswith("http") else "",
+         "details": res.get("Details") or "", "plot": res.get("Plot") or ""} for res in found]}
+
+
+@route_jobs.route('/identify/details')
+@login_required
+def identify_details():
+    """Job page > Identify: one result's full details and TV seasons, as JSON"""
+    imdb_id = (request.args.get('imdbID') or '').strip()
+    if not imdb_id:
+        return {"error": "No IMDb id."}, 400
+    info = ui_utils.metadata_selector("get_details", None, None, imdb_id) or {}
+    if not info or 'Error' in info:
+        return {"error": f"Couldn't load the details for {imdb_id}."}
+    kind = str(info.get("Type") or "").lower()
+    return {"title": info.get("Title") or "", "year": info.get("Year") or "", "imdb_id": info.get("imdbID") or imdb_id,
+            "type": kind, "poster": info.get("Poster") or "", "poster_big": _poster(info.get("Poster"), "w500"),
+            "plot": info.get("Plot") or "", "seasons": _season_choices(imdb_id) if kind == "series" else []}
 
 
 def _season_choices(imdb_id):
@@ -366,63 +421,34 @@ def updatetitle():
     flash(f'Title: {old_title} ({old_year}) was updated to '
           f'{request.args.get("title")} ({request.args.get("year")})', "success")
     _retitle_finished(job, old_path, old_base)
-    return redirect("/")
+    return redirect(_job_page(job.job_id))
 
 
 @route_jobs.route('/activerips')
 @login_required
 def rips():
-    """
-    This no longer works properly because of the 'transcoding' status
-    """
-    active_jobs = Job.query.filter(~Job.finished)
-    return render_template('activerips.html', jobs=active_jobs)
+    """Old active-rips page (unlinked; the home page lists active jobs)"""
+    return redirect("/")
 
 
 @route_jobs.route('/changeparams')
 @login_required
 def changeparams():
-    """
-    For updating Config params or changing/correcting job.disctype manually
-    """
-    config_id = request.args.get('config_id')
-    job = Job.query.get(config_id)
-    config = job.config
-    form = ChangeParamsForm(obj=config)
-    return render_template('changeparams.html', title='Change Parameters', form=form, config=config)
+    """Old rip-settings page: now under Details on the job page"""
+    return redirect(_job_page(request.args.get('config_id'), "rip-settings"))
 
 
 @route_jobs.route('/list_titles')
 @login_required
 def list_titles():
-    """
-    The search results page
-
-    This will display the returned search results from OMDB or TMDB from the users input search
-    """
-    title = request.args.get('title').strip() if request.args.get('title') else ''
-    year = request.args.get('year').strip() if request.args.get('year') else ''
+    """Old search results page: now the job page's Identify section"""
     job_id = request.args.get('job_id').strip() if request.args.get('job_id') else ''
     if job_id == "":
         app.logger.debug("list_titles - no job supplied")
         flash(constants.NO_JOB, "danger")
         raise ValidationError
-    job = Job.query.get(job_id)
-    form = TitleSearchForm(obj=job)
-    media_type = _search_type()
-    search_results = ui_utils.metadata_selector("search", title, year, media_type=media_type)
-    if search_results is None or 'Error' in search_results or (
-            'Search' in search_results and len(search_results['Search']) < 1):
-        app.logger.debug("No results found. Trying without year")
-        flash(f"No search results found for {title} ({year})<br/> Trying without year", 'danger')
-        search_results = ui_utils.metadata_selector("search", title, "", media_type=media_type)
-
-    if search_results is None or 'Error' in search_results or (
-            'Search' in search_results and len(search_results['Search']) < 1):
-        flash(f"No search results found for {title}", 'danger')
-    return render_template('list_titles.html', results=search_results, job_id=job_id,
-                           form=form, title=title, year=year, media_type=media_type,
-                           search_types=SEARCH_TYPES)
+    return redirect(_job_page(job_id, "identify", q=request.args.get('title') or None,
+                              year=request.args.get('year') or None, type=request.args.get('type') or None))
 
 
 @route_jobs.route('/json', methods=['GET'])

@@ -350,7 +350,7 @@ def ask_user(job, result, wait_seconds):
     """Low confidence: send the phone notification with Confirm / Pick another"""
     from arm.automation import notify
     minutes = max(1, round(wait_seconds / 60))
-    pick = notify.view("Pick the title", notify.arm_url(f"/titlesearch?job_id={job.job_id}"))
+    pick = notify.view("Pick the title", notify.arm_url(f"/jobdetail?job_id={job.job_id}#identify"))
     if normalize_title(job.title) in ("", "none", "not identified") or not job.hasnicetitle:
         store.add_attention(job.job_id, "confidence", "A2RM couldn't identify this disc. Pick the title.")
         title = "Which disc is this?"

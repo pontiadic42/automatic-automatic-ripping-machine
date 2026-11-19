@@ -28,7 +28,7 @@
             <input type="hidden" name="token" value="{{ token }}">
             <input type="hidden" name="from_page" value="1">
             <button class="arm-btn arm-btn-primary" type="submit">{{ label }}</button>
-            <a class="arm-btn" href="/titlesearch?job_id={{ job.job_id }}">Pick another title</a>
+            <a class="arm-btn" href="/jobdetail?job_id={{ job.job_id }}#identify">Pick another title</a>
         </form>
     {% endif %}
 </div>

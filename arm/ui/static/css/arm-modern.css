@@ -318,3 +318,62 @@ html .custom-select.arm-auto-multi, html[data-theme="dark"] .custom-select.arm-a
 .arm-lib-wrap { overflow-x: auto; }
 .arm-lib-table .arm-pill { white-space: normal; text-align: left; }
 .arm-lib-table td:last-child { white-space: nowrap; }
+
+/* C36-C38: tab bars, one job page, bigger posters */
+:root { --arm-hero-shade: rgba(255, 255, 255, .88); }
+html[data-theme="dark"] { --arm-hero-shade: rgba(20, 22, 26, .86); }
+.arm-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--arm-border); margin: 0 0 16px; }
+.arm-tabs a { padding: 7px 14px; font-size: 14px; color: var(--arm-muted) !important; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; text-decoration: none !important; }
+.arm-tabs a:hover { color: var(--arm-text) !important; }
+.arm-tabs a.active { color: var(--arm-text) !important; border-bottom-color: var(--arm-accent); font-weight: 500; }
+.arm-subtabs { border-bottom: none; margin-top: -10px; }
+.arm-subtabs a { font-size: 13px; padding: 4px 10px; border-radius: 6px; border-bottom: none; }
+.arm-subtabs a.active { background: var(--arm-accent-bg); color: var(--arm-accent-text) !important; }
+
+.arm-job { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.arm-job-hero { background-size: cover; background-position: center; overflow: hidden; }
+.arm-job-hero .arm-auto-card { border-bottom: none; }
+.arm-job-top { display: flex; gap: 20px; padding: 18px 20px 6px; flex-wrap: wrap; }
+.arm-job-poster img { width: 200px; max-width: 40vw; border-radius: 8px; display: block; }
+.arm-job-info { flex: 1; min-width: 240px; }
+.arm-job-info h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; }
+.arm-job-pills .arm-pill { margin: 0 4px 4px 0; }
+.arm-job-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.arm-job-plot { font-size: 14px; color: var(--arm-muted); max-width: 70ch; }
+.arm-job .ratings { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.arm-job-section > summary { display: flex; align-items: baseline; gap: 12px; padding: 12px 20px; cursor: pointer; list-style: none; }
+.arm-job-section > summary::-webkit-details-marker { display: none; }
+.arm-job-section > summary::before { content: "▸"; color: var(--arm-faint); width: 10px; }
+.arm-job-section[open] > summary::before { content: "▾"; }
+.arm-job-section > summary h2 { font-size: 17px; font-weight: 600; margin: 0; }
+.arm-job-section > summary .arm-faint { font-size: 13px; }
+.arm-job-body { padding: 0 20px 16px; }
+.arm-job-body .arm-auto-card { padding: 0; border-bottom: none; }
+.arm-job-body table td, .arm-job-body table th { text-align: left; }
+
+.arm-id-search, .arm-id-custom, .arm-id-use, .arm-params { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.arm-id-search input[type=search] { flex: 1; min-width: 200px; }
+.arm-id-search input, .arm-id-search select, .arm-id-custom input, .arm-id-custom select,
+.arm-id-use select, .arm-id-use input, .arm-params select, .arm-params input[type=text], .arm-params input[type=number] {
+    height: 34px; padding: 4px 8px; border: 1px solid var(--arm-border-strong); border-radius: 7px;
+    background: var(--arm-surface); color: var(--arm-text); width: auto; }
+.arm-params label { display: flex; flex-direction: column; font-size: 12px; color: var(--arm-muted); gap: 3px; margin: 0; }
+.arm-params .arm-params-check { flex-direction: row; align-items: center; gap: 6px; }
+
+.arm-poster-grid, .arm-lib-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin: 10px 0; }
+.arm-poster-card { display: flex; flex-direction: column; gap: 3px; padding: 6px; text-align: left; background: transparent;
+    border: 2px solid transparent; border-radius: 10px; color: var(--arm-text); cursor: pointer; }
+.arm-poster-card:hover { background: var(--arm-surface-2); }
+.arm-poster-card.chosen { border-color: var(--arm-accent); background: var(--arm-accent-bg); }
+.arm-poster-img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 7px; background: var(--arm-surface-2);
+    display: flex; align-items: center; justify-content: center; color: var(--arm-faint); font-size: 12px; }
+.arm-poster-card:hover .arm-poster-img { box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.arm-poster-name { font-size: 14px; font-weight: 500; line-height: 1.25; }
+.arm-poster-meta { font-size: 12px; color: var(--arm-muted); }
+.arm-id-pick { border: 1px solid var(--arm-border); border-radius: 10px; padding: 14px; margin: 10px 0; }
+.arm-id-pick-inner { display: flex; gap: 18px; flex-wrap: wrap; }
+.arm-id-pick-inner > div { flex: 1; min-width: 240px; }
+.arm-id-pick-poster { width: 260px; max-width: 70vw; border-radius: 8px; }
+.arm-id-pick h3 { font-size: 18px; margin: 0 0 4px; }
+.arm-lib-block { margin-bottom: 14px; }

@@ -46,6 +46,9 @@ route_settings = Blueprint('route_settings', __name__,
                            template_folder='templates',
                            static_folder='../static')
 REDIRECT_SETTINGS = "route_settings.settings"
+# Settings tabs that live on this page (C38) and the old panes each one shows
+SETTINGS_TABS = {"ripping": ["settings"], "music": ["abcde"], "interface": ["uiSettingsTab"],
+                 "system": ["home", "system"], "help": ["help"]}
 
 
 def mask_last(value, n=4):
@@ -120,6 +123,8 @@ def settings():
     comments = ui_utils.generate_comments()
     form = SettingsForm()
 
+    tab = request.args.get("tab", "system")
+    tab = tab if tab in SETTINGS_TABS else "system"
     session["page_title"] = "Settings"
 
     app.logger.debug(f"stats: {stats}")
@@ -140,7 +145,8 @@ def settings():
                            form_drive=form_drive,
                            ripper_read_only=is_read_only(cfg.arm_config_path),
                            apprise_read_only=is_read_only(cfg.apprise_config_path),
-                           abcde_read_only=is_read_only(cfg.abcde_config_path))
+                           abcde_read_only=is_read_only(cfg.abcde_config_path),
+                           tab=tab, panes=SETTINGS_TABS[tab])
 
 
 def _render_nodes():
@@ -457,7 +463,7 @@ def testapprise():
         message = message + f" Server URL: http://{cfg.arm_config['UI_BASE_URL']}:{cfg.arm_config['WEBSERVER_PORT']}"
     ripper_utils.notify(None, "ARM notification", message)
     flash("Test notification sent ", "success")
-    return redirect(url_for(REDIRECT_SETTINGS))
+    return redirect(url_for("route_automation.automation_settings", section="notifications"))
 
 
 @route_settings.route('/updatesysinfo')

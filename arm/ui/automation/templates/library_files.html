@@ -1,10 +1,9 @@
 {% extends "base.html" %}
+{% import "tabbar.html" as tabbar %}
 {% block content %}
-    <div class="arm-head">
-        <h1>Manage files</h1>
-        <span class="arm-faint" style="font-size:13px">{{ r["items"]|length }} items in movies, tv and unidentified · {{ root }}</span>
-        <span class="arm-head-right"><a href="{{ url_for('route_history.library') }}">Library</a></span>
-    </div>
+    {{ tabbar.library_tabs("files") }}
+    <p class="arm-faint" style="font-size:13px; margin-top:-8px">{{ r["items"]|length }} items in movies, tv and unidentified · {{ root }}.
+        Items from a job open on their job page.</p>
 
     <div class="arm-chips" id="libChips">
         {% for name, label in filters.items() %}
@@ -28,7 +27,7 @@
                     <td>{% if item.job_id %}<a href="/jobdetail?job_id={{ item.job_id }}">{{ item.job_id }}</a>{% else %}<span class="arm-faint">none</span>{% endif %}</td>
                     <td>{% for issue in item.issues %}<span class="arm-pill {{ 'bad' if issue.code in ['empty'] else 'warn' if issue.code in ['duplicate', 'copy', 'raw_names', 'unidentified', 'loose', 'season_folder'] else '' }}"
                             style="font-size:11px; margin:0 4px 3px 0; display:inline-block">{{ issue.text }}</span>{% endfor %}</td>
-                    <td><a class="arm-btn" href="{{ url_for('route_library_files.item', id=item.id) }}">Fix</a></td>
+                    <td><a class="arm-btn" href="{% if item.job_id %}/jobdetail?job_id={{ item.job_id }}#files{% else %}{{ url_for('route_library_files.item', id=item.id) }}{% endif %}">Fix</a></td>
                 </tr>
                 {% endif %}
             {% endfor %}
@@ -40,7 +39,7 @@
     </section>
 
     <section class="arm-card arm-auto-group">
-        <h2>Recent changes</h2>
+        <h2 id="changes">Recent changes</h2>
         {% if history %}
             {% for e in history %}
                 <p style="margin:0 0 6px; font-size:13px"><span class="arm-faint">{{ e.time.replace("T", " ") }}</span>

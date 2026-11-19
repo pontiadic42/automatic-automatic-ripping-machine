@@ -215,4 +215,4 @@ def summary_line():
     if not result.get("problems") or result.get("reported") == result.get("checked"):
         return None
     store.update_state(health=dict(result, reported=result["checked"]))
-    return f"Library check: {len(result['problems'])} of {result['files']} files have problems (see /automation/health)"
+    return f"Library check: {len(result['problems'])} of {result['files']} files have problems (see Library > Health)"
