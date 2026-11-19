@@ -34,7 +34,7 @@ EXPLANATIONS = (
      "HandBrake was built against a newer libva than the one installed",
      "Use the same libva at build and run time (rebuild the image)."),
     (r"MFXVideoCORE_QueryPlatform failed|qsv is not available on the system|Quick Sync Video support: no",
-     "No usable GPU: the render device isn't passed in, ARM's user can't open it, or the driver doesn't load",
+     "No usable GPU: the render device isn't passed in, the arm user can't open it, or the driver doesn't load",
      "Pass --device /dev/dri/renderD128 and give the arm user the device's group (restart the container: "
      "A2RM's startup adds it, or use --group-add <gid>). Then check vainfo."),
     (r"invalid pointer qsv_data->qsv_info|Error initializing an internal MFX session",

@@ -5,6 +5,13 @@
 A2RM has no version numbers of its own yet; changes are listed by date. The Docker image still reports ARM's version
 (`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
 
+### 2026-11-18
+- **A2RM, not ARM:** the web UI, phone notifications and setting descriptions say A2RM where they mean A2RM; the
+  footer and Help tab link to this repository and the ARM vs A2RM page; the "update available" check against ARM's
+  GitHub (which always said there was an update) is gone; MusicBrainz sees A2RM as the client; ARM's install
+  scripts were removed. Things that really are ARM's (its database, disc-ID database, copy folders, log) still say ARM.
+- GitHub page: ARM vs A2RM document, install steps, this changelog; ARM's templates and workflows removed.
+
 ### 2026-11-17
 - **Library > Manage files:** rename, move, merge, trash and undo anything in `movies/`, `tv/` and `unidentified/`,
   including files A2RM didn't make; preview before every change.

@@ -10,8 +10,8 @@
         <h2>Test encode</h2>
         {% set t = test or r.last_test %}
         {% if r.test_encoder %}
-            <p class="arm-muted" style="font-size:13px">A 3-second test clip encoded with <code>{{ r.test_encoder }}</code> as ARM's
-                own user. HandBrake's "qsv: is available" message is printed even without a GPU, so only this counts.</p>
+            <p class="arm-muted" style="font-size:13px">A 3-second test clip encoded with <code>{{ r.test_encoder }}</code> as the arm
+                user. HandBrake's "qsv: is available" message is printed even without a GPU, so only this counts.</p>
             {% if t %}
                 <p>{% if t.ok %}<span class="arm-pill done">Passed</span> {{ t.encoder }} works ({{ t.seconds }} s){% else %}
                     <span class="arm-pill bad">Failed</span> <b>{{ t.cause }}</b><br><span class="arm-muted">Fix: {{ t.fix }}</span>{% endif %}
@@ -32,7 +32,7 @@
     </section>
 
     <section class="arm-card arm-auto-group">
-        <h2>What ARM asks for</h2>
+        <h2>What your HandBrake settings ask for</h2>
         {% for key, s in r.hb_args.items() %}
             <p style="margin:0 0 4px"><code>{{ key }}</code>: <span class="arm-pill {{ 'done' if s.hardware else '' }}">{{ s.encoder }}</span>
                 <span class="arm-faint" style="font-size:12px">{{ s.args }}</span></p>
@@ -48,7 +48,7 @@
         {% if not r.gpus %}<p class="arm-muted">No GPU visible in /sys/class/drm.</p>{% endif %}
         {% for n in r.nodes %}
             <p style="margin:4px 0">{{ n.path }} (group {{ n.gid }}):
-                {% if n.usable %}<span class="arm-pill done">ARM's user can open it</span>{% else %}<span class="arm-pill bad">ARM's user can't open it</span>
+                {% if n.usable %}<span class="arm-pill done">the arm user can open it</span>{% else %}<span class="arm-pill bad">the arm user can't open it</span>
                 <span class="arm-muted">{{ n.fix }}</span>{% endif %}</p>
         {% endfor %}
         {% if not r.nodes %}<p class="arm-attn">No /dev/dri/renderD* in the container. Add <code>--device /dev/dri/renderD128</code>.</p>{% endif %}

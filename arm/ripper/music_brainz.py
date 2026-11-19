@@ -10,6 +10,9 @@ from discid import read, Disc
 import arm.config.config as cfg
 from arm.ripper import utils as u
 
+# MusicBrainz asks clients to name themselves and give a contact (C39: A2RM, not ARM)
+A2RM_URL = "https://github.com/pontiadic42/automatic-automatic-ripping-machine"
+
 
 werkzeug.cached_property = werkzeug.utils.cached_property
 
@@ -101,7 +104,7 @@ def get_disc_info(job, discid: str) -> str:
     # Tell musicbrainz what your app is, and how to contact you
     # (this step is required, as per the webservice access rules
     # at http://wiki.musicbrainz.org/XML_Web_Service/Rate_Limiting )
-    mb.set_useragent(app="arm", version=str(job.arm_version), contact="https://github.com/automatic-ripping-machine")
+    mb.set_useragent(app="a2rm", version=str(job.arm_version), contact=A2RM_URL)
 
     # Get CD info from musicbrainz and catch any errors
     try:
@@ -304,7 +307,7 @@ def get_title(discid: str, job) -> str:
     # Tell musicbrainz what your app is, and how to contact you
     # (this step is required, as per the webservice access rules
     # at http://wiki.musicbrainz.org/XML_Web_Service/Rate_Limiting )
-    mb.set_useragent("arm", version=str(job.arm_version), contact="https://github.com/automatic-ripping-machine")
+    mb.set_useragent("a2rm", version=str(job.arm_version), contact=A2RM_URL)
     try:
         disc_info = mb.get_releases_by_discid(discid, includes=['artist-credits'])
         logging.debug(f"disc_info: {disc_info}")

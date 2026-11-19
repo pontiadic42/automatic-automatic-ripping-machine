@@ -138,8 +138,9 @@ about 10 with QuickSync). The `Dockerfile` is ARM's plus A2RM's additions (curre
 Tesseract for title-card OCR). You don't need the `arm-dependencies` git submodule: the base image
 `automaticrippingmachine/arm-dependencies` comes from Docker Hub.
 
-> **Don't use the scripts in `scripts/installers/`** (`docker-setup.sh`, `DebianInstaller.sh`) or ARM's Docker Hub
-> image `automaticrippingmachine/automatic-ripping-machine`: they are ARM's and install plain ARM, not A2RM.
+> **Don't use ARM's installers or its Docker Hub image** (`automaticrippingmachine/automatic-ripping-machine`), which
+> ARM's wiki points to: they install plain ARM, not A2RM. ARM's install scripts were removed from this repo for that
+> reason.
 
 ARM's [wiki](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki) and
 [Docker guide](https://github.com/automatic-ripping-machine/automatic-ripping-machine/wiki/docker) are still the best
@@ -228,8 +229,7 @@ tests (4 in `test_ripper_ARMInfo.py` that need a git checkout, 2 in `test_ripper
 ## Support
 
 A2RM is a personal project: there is no issue tracker and no Discord. ARM's GitHub, wiki and Discord are for ARM;
-please don't take A2RM questions there. Parts of the web UI that came from ARM (the Help tab, the footer link, the
-"update available" check) still point at ARM; changing them is on A2RM's to-do list.
+please don't take A2RM questions there. The web UI's Help tab and footer link to this repository.
 What changed in each A2RM build is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Credits

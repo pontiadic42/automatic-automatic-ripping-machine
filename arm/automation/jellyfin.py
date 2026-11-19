@@ -101,7 +101,7 @@ def verify(job_id, job):
     expected = str(job.imdb_id or "")
     if expected.startswith("tt") and ids.get("imdb") and ids["imdb"] != expected:
         message = (f"Jellyfin matched {data['path']} to \"{item.get('Name')}\" ({ids['imdb']}), "
-                   f"but ARM ripped {job.title} ({expected}). Fix it in Jellyfin with Identify.")
+                   f"but A2RM ripped {job.title} ({expected}). Fix it in Jellyfin with Identify.")
         store.update_job(job_id, jellyfin=dict(data, status="mismatch", item=item.get("Name")))
         store.add_attention(job_id, "jellyfin", message)
         notify.send("Jellyfin picked a different movie", message, tags=["warning"], click=notify.job_link(job_id))

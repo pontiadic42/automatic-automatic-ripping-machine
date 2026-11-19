@@ -85,21 +85,19 @@ def settings():
     server_timezone = os.environ.get("TZ", "Etc/UTC")
     current_time = datetime.now()
     server_datetime = current_time.strftime(cfg.arm_config['DATE_FORMAT'])
-    [arm_version_local, arm_version_remote] = ui_utils.git_check_version()
-    local_git_hash = ui_utils.get_git_revision_hash()
+    # A2RM (C39): no update check against ARM's GitHub. ARM's check compared this install with ARM's latest
+    # commit, so it always said "update available"; A2RM's changes are on its own GitHub page instead.
+    arm_version_local = ui_utils.git_check_version()[0]
 
     stats = {'server_datetime': server_datetime,
              'server_timezone': server_timezone,
              'python_version': platform.python_version(),
              'arm_version_local': arm_version_local,
-             'arm_version_remote': arm_version_remote,
-             'git_commit': local_git_hash,
              'movies_ripped': movies,
              'series_ripped': series,
              'cds_ripped': cds,
              'no_failed_jobs': failed_rips,
              'total_rips': total_rips,
-             'updated': ui_utils.git_check_updates(local_git_hash),
              'hw_support': check_hw_transcode_support()
              }
 

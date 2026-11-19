@@ -131,7 +131,7 @@ def job_action():
 def _accept(job, name):
     if not job.finished:
         confirm_title(job)
-        return f"Keeping {name}. ARM starts ripping when its wait ends."
+        return f"Keeping {name}. A2RM starts ripping when its wait ends."
     if move_if_unidentified(job):
         return f"Kept {name} and moved its files to {job.path}."
     store.clear_attention(job.job_id, "confidence")
@@ -204,7 +204,7 @@ def _delete_files(job, _name):
         return "Stop the job first.", 400
     folder = _deletable_folder(job)
     if folder is None:
-        return "There's no output folder ARM can safely delete for this job.", 400
+        return "There's no output folder A2RM can safely delete for this job.", 400
     shutil.rmtree(folder)
     app.logger.info(f"Job {job.job_id}: deleted its output folder {folder} from the web UI")
     store.update_job(job.job_id, files_deleted=folder, attention=[])
@@ -388,7 +388,7 @@ def name_preview():
 @route_automation.route('/automation/test_ntfy', methods=['POST'])
 @login_required
 def test_ntfy():
-    ok = notify.send("ARM test notification", "Phone notifications from ARM work.", tags=["dvd"],
+    ok = notify.send("A2RM test notification", "Phone notifications from A2RM work.", tags=["dvd"],
                      click=notify.arm_url("/"))
     flash("Test notification sent." if ok else "Couldn't send it. Check the server and topic.",
           "success" if ok else "danger")

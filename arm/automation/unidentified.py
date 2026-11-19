@@ -132,7 +132,7 @@ def after_move(job, final_directory):
     store.add_attention(job.job_id, "confidence", f"Ripped as unidentified: nobody confirmed {guess}. "
                                                   "Accept it or pick the title to move the files.")
     message = (f"Nobody confirmed the title, so the disc (label {job.label or 'none'}) went to "
-               f"{final_directory}. ARM's guess: {guess}. Accept it or pick the title and the files move."
+               f"{final_directory}. A2RM's guess: {guess}. Accept it or pick the title and the files move."
                + ocr.hint(job.job_id))
     actions = [notify.http(f"It's {guess}"[:40], notify.action_url(job.job_id, "confirm")),
                notify.view("Pick the title", notify.arm_url(f"/titlesearch?job_id={job.job_id}"))]

@@ -229,7 +229,7 @@ def _label_main_cut(main_cut, preferred, tmdb_runtime, decisions):
     for number, title in enumerate([t for t in main_cut if t is not main], start=2):
         if guessed:
             decisions[title.tid] = _decision(title, "language", True, f"Version {number}",
-                                             "Same cut, but ARM can't tell which language version this is",
+                                             "Same cut, but A2RM can't tell which language version this is",
                                              ambiguous=True)
         elif title.language:
             name = language_name(title.language)
@@ -388,7 +388,7 @@ def plan(job, raw):
     logging.info(f"Title analysis: {summary}")
     if ambiguous:
         store.add_attention(job.job_id, "language",
-                            "This disc has the movie in several language versions ARM couldn't tell apart. "
+                            "This disc has the movie in several language versions A2RM couldn't tell apart. "
                             "All of them were kept; pick the one to keep on the job page.")
     return {d["tid"]: d for d in result["titles"]}
 

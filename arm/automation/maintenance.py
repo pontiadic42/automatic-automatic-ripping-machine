@@ -134,7 +134,7 @@ def watchdog(now=None):
         logging.warning(message)
         store.add_attention(job.job_id, "stuck", message, level="bad")
         notify.in_app("Job stuck", message)
-        notify.send("ARM job stuck", message, priority="high", tags=["warning"], click=notify.job_link(job.job_id))
+        notify.send("A2RM job stuck", message, priority="high", tags=["warning"], click=notify.job_link(job.job_id))
     store.update_state(stuck=flagged)
     return stuck
 
@@ -279,7 +279,7 @@ def summary(now=None):
 def send_summary(now=None):
     text = summary(now)
     if text:
-        notify.send("ARM daily summary", text, priority="low", tags=["dvd"], click=notify.arm_url("/"))
+        notify.send("A2RM daily summary", text, priority="low", tags=["dvd"], click=notify.arm_url("/"))
     return text
 
 

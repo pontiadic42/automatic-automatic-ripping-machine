@@ -197,7 +197,7 @@ class TestJobCard(Temp):
         with app.test_request_context("/jobdetail?job_id=3"):
             html = app.jinja_env.get_template("automation_card.html").render(automation=data, jobs=job)
         self.assertIn("<b>42</b>", html)
-        self.assertIn("ARM isn't sure about this title", html)
+        self.assertIn("A2RM isn't sure about this title", html)
         self.assertIn("Duplicate", html)
         self.assertIn("2:15:00", html)
         self.assertIn("Not sure this is It", html)

@@ -77,7 +77,7 @@ def score(identified, label_usable, label_sim, runtime_diff, prior, series=False
     what = "An episode-length title" if series else "The main title"
     reasons = []
     if not identified:
-        return 5, ["ARM couldn't find a title for this disc"]
+        return 5, ["A2RM couldn't find a title for this disc"]
     points = 30
     if not label_usable:
         reasons.append("The disc label doesn't say what it is")
@@ -352,9 +352,9 @@ def ask_user(job, result, wait_seconds):
     minutes = max(1, round(wait_seconds / 60))
     pick = notify.view("Pick the title", notify.arm_url(f"/titlesearch?job_id={job.job_id}"))
     if normalize_title(job.title) in ("", "none", "not identified") or not job.hasnicetitle:
-        store.add_attention(job.job_id, "confidence", "ARM couldn't identify this disc. Pick the title.")
+        store.add_attention(job.job_id, "confidence", "A2RM couldn't identify this disc. Pick the title.")
         title = "Which disc is this?"
-        body = (f"ARM couldn't identify the disc in {job.devpath} (label: {job.label or 'none'}). "
+        body = (f"A2RM couldn't identify the disc in {job.devpath} (label: {job.label or 'none'}). "
                 f"It rips it as unidentified in {minutes} min unless you pick the title.")
         actions = [pick]
     else:
@@ -362,9 +362,9 @@ def ask_user(job, result, wait_seconds):
                             f"Not sure this is {job.title} ({result['score']}/100). Confirm or pick another title.")
         title = f"Is this {job.title}" + (f" ({job.year})" if job.year and job.year != "0000" else "") + "?"
         body = (f"{result['score']}/100 sure. " + "; ".join(result["reasons"][:3]) +
-                (f". In {minutes} min ARM rips it into the unidentified folder (you can still name it later)."
+                (f". In {minutes} min A2RM rips it into the unidentified folder (you can still name it later)."
                  if settings.get("LOW_CONFIDENCE_ACTION") == "unidentified" and wait_seconds
-                 else f". ARM rips with this title in {minutes} min unless you change it."))
+                 else f". A2RM rips with this title in {minutes} min unless you change it."))
         actions = [notify.http("Yes, that's it", notify.action_url(job.job_id, "confirm")), pick]
     suggestion = result.get("suggestion")
     if suggestion:

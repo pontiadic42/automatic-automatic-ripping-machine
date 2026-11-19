@@ -228,7 +228,7 @@
             return "";
         }
         const cls = info.level === "high" ? "done" : (info.level === "low" ? "warn" : "");
-        return `<span class="arm-pill ${cls}" title="How sure ARM is about the title">${Math.round(info.confidence)}% sure</span>`;
+        return `<span class="arm-pill ${cls}" title="How sure A2RM is about the title">${Math.round(info.confidence)}% sure</span>`;
     }
 
     function actionButton(jobId, action, label, extra) {
@@ -278,7 +278,7 @@
             return;
         }
         if (action === "delete_files" &&
-                !window.confirm(`Permanently delete the files ARM ripped for ${name}? This can't be undone.`)) {
+                !window.confirm(`Permanently delete the files A2RM ripped for ${name}? This can't be undone.`)) {
             return;
         }
         const token = document.querySelector('meta[name="csrf-token"]');
@@ -317,7 +317,7 @@
         activeJobs.filter(function (job) { return job.status === "waiting" && !shown[job.job_id]; }).forEach(function (job) {
             const id = encodeURIComponent(job.job_id);
             html += `<div class="arm-attn">
-                <span>${esc(jobTitle(job))} couldn't be identified. ARM will rip it as-is unless you set a title.</span>
+                <span>${esc(jobTitle(job))} couldn't be identified. A2RM will rip it as-is unless you set a title.</span>
                 <span class="arm-attn-actions">${window.ARM_AUTHENTICATED && startNowOn() ? actionButton(job.job_id, "start_now", "Start now") : ""}
                 <a href="titlesearch?job_id=${id}">Search title</a>
                 <a href="customTitle?job_id=${id}">Custom title</a></span></div>`;
@@ -390,7 +390,7 @@
             `Memory <b>${Math.round(stats.memory_percent)}%</b>`,
             `Media <b>${esc(stats.completed_free)} GB free</b>`,
             `Transcoding <b>${hw.length ? hw.join(", ") : "software"}</b>`,
-            `ARM <b>${esc(stats.version)}</b>`
+            `A2RM <b>based on ARM ${esc(stats.version)}</b>`
         ].filter(Boolean).map(function (s) { return `<span>${s}</span>`; }).join("");
     }
 
@@ -455,7 +455,7 @@
             checkNotes(data);
             render();
         }).fail(function () {
-            $("#armUpdated").text("Can't reach ARM, retrying…");
+            $("#armUpdated").text("Can't reach A2RM, retrying…");
         });
     }
 

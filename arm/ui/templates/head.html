@@ -63,10 +63,10 @@
     <!-- Set Page Title -->
     {% if session["arm_name"] %}
         {% if session["page_title"] %}
-            <title>[{{ session["arm_name"] }}] - {{ session["page_title"] }} - ARM</title>
+            <title>[{{ session["arm_name"] }}] - {{ session["page_title"] }} - A2RM</title>
         {% endif %}
     {% else %}
-        <title>ARM</title>
+        <title>A2RM</title>
     {% endif %}
 
     {% block head_extra %}{% endblock %}

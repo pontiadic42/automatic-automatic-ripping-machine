@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-The main runner for Automatic Ripping Machine
+The main runner for A2RM (based on the Automatic Ripping Machine)
 
-For help please visit https://github.com/automatic-ripping-machine/automatic-ripping-machine
+A2RM: https://github.com/pontiadic42/automatic-automatic-ripping-machine
 """
 import argparse  # noqa: E402
 import logging  # noqa: E402

@@ -4,7 +4,7 @@
     {% set title_known = (jobs.title_manual or jobs.title or "")|lower not in ["", "none", "not identified"] %}
     {% if jobs.status == "waiting" and start_now_buttons %}
         <div class="arm-attn">
-            <span>ARM is waiting before it rips, so you can change the title.</span>
+            <span>A2RM is waiting before it rips, so you can change the title.</span>
             <span class="arm-attn-actions">
                 <button type="button" class="arm-btn" data-card-action="start_now">Start now</button>
             </span>
@@ -37,7 +37,7 @@
             const action = button.dataset.cardAction;
             if (action === "cancel" && !confirm("Stop this job and eject the disc?")) { return; }
             if (action === "delete_files" &&
-                !confirm("Permanently delete the files ARM ripped for this job? This can't be undone.")) { return; }
+                !confirm("Permanently delete the files A2RM ripped for this job? This can't be undone.")) { return; }
             if (action === "keep_version") {
                 const others = Number(button.dataset.others || 1);
                 if (!confirm("Keep " + button.dataset.name + " and permanently delete the other " + others +
@@ -99,9 +99,9 @@
             <div>
                 <p class="arm-auto-conf-title">
                     {% if c.confirmed %}Title confirmed by you
-                    {% elif c.level == "high" %}ARM is sure about this title
-                    {% elif c.level == "low" %}ARM isn't sure about this title
-                    {% else %}ARM is fairly sure about this title{% endif %}
+                    {% elif c.level == "high" %}A2RM is sure about this title
+                    {% elif c.level == "low" %}A2RM isn't sure about this title
+                    {% else %}A2RM is fairly sure about this title{% endif %}
                 </p>
                 <ul class="arm-auto-reasons">
                     {% for reason in c.reasons %}<li>{{ reason }}</li>{% endfor %}
@@ -180,7 +180,7 @@
 
     {% if automation.versions %}
         <h3 class="arm-auto-h">Which version do you want to keep?</h3>
-        <p class="arm-muted" style="font-size:13px">ARM found {{ automation.versions | length }} versions of the movie
+        <p class="arm-muted" style="font-size:13px">A2RM found {{ automation.versions | length }} versions of the movie
             it couldn't tell apart. Title cards and on-screen text in the stills usually show the language.
             Keeping one deletes the others and gives it the main file name.</p>
         {% for v in automation.versions %}

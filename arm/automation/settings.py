@@ -42,28 +42,28 @@ SCHEMA = (
     Setting("NTFY_SEND_ALL", False, "bool", "notify", "Send every ARM notification",
             "Also send ARM's normal messages (disc found, rip complete, ...) to ntfy. When off, ntfy only "
             "gets things that need you, problems and the daily summary."),
-    Setting("ARM_PHONE_URL", "", "str", "notify", "ARM address for your phone",
-            "How your phone reaches this ARM, used for the buttons in notifications, "
+    Setting("ARM_PHONE_URL", "", "str", "notify", "A2RM address for your phone",
+            "How your phone reaches this A2RM, used for the buttons in notifications, "
             "e.g. http://192.168.1.50:8080. Empty uses UI_BASE_URL."),
 
     # Identification
     Setting("CONFIDENCE_ENABLED", True, "bool", "identify", "Score identification confidence",
-            "Rate how sure ARM is about each disc's title (0-100) from the label, the TMDb runtime and "
+            "Rate how sure A2RM is about each disc's title (0-100) from the label, the TMDb runtime and "
             "earlier rips of the same disc."),
     Setting("CONFIDENCE_NOTIFY_BELOW", 70, "int", "identify", "Ask me below",
-            "Below this score ARM sends a notification with Confirm / Pick another buttons and waits for you."),
+            "Below this score A2RM sends a notification with Confirm / Pick another buttons and waits for you."),
     Setting("CONFIDENCE_SKIP_WAIT_ABOVE", 90, "int", "identify", "Don't wait above",
-            "At or above this score ARM skips the manual-wait period and starts ripping right away. "
+            "At or above this score A2RM skips the manual-wait period and starts ripping right away. "
             "0 = always wait as usual."),
     Setting("LOW_CONFIDENCE_WAIT_TIME", 900, "int", "identify", "Wait for low confidence (seconds)",
-            "How long to wait for you when the score is low. After that ARM rips with its best guess. "
+            "How long to wait for you when the score is low. After that A2RM rips with its best guess. "
             "0 = use MANUAL_WAIT_TIME."),
     Setting("LOW_CONFIDENCE_ACTION", "unidentified", "choice", "identify", "When nobody answers",
             "Low confidence and the wait ran out: unidentified = rip as usual but file it under "
             "unidentified/<label> (job N)/ with stills to help you recognise it, and move it when you accept or "
-            "pick the title; guess = file it under ARM's guess (the old behaviour).", ("unidentified", "guess")),
+            "pick the title; guess = file it under A2RM's guess (the old behaviour).", ("unidentified", "guess")),
     Setting("START_NOW_BUTTONS", True, "bool", "identify", "\"Start now\" buttons",
-            "While ARM waits before ripping, show a Start now button (home page drive bay, job page and the "
+            "While A2RM waits before ripping, show a Start now button (home page drive bay, job page and the "
             "phone notification when it has room) that ends the wait and keeps the current title."),
     Setting("DISCDB_LOOKUP", False, "bool", "identify", "Look discs up in TheDiscDB",
             "Compute the disc's TheDiscDB hash (from its file sizes, on this server) and look it up on "
@@ -73,7 +73,7 @@ SCHEMA = (
     Setting("DISCDB_URL", "https://thediscdb.com/graphql", "str", "identify", "TheDiscDB address",
             "GraphQL address used for the lookup."),
     Setting("TITLE_OCR", False, "bool", "identify", "Read the title card (OCR)",
-            "When ARM isn't sure about a disc, read the text on frames from the first 5 minutes of the main "
+            "When A2RM isn't sure about a disc, read the text on frames from the first 5 minutes of the main "
             "file with Tesseract (on this server) and search TMDb for it; a match with the right runtime "
             "becomes the job's suggestion. Works for titles in plain type, not stylised logos. Needs "
             "tesseract-ocr in the image (A2RM's Dockerfile installs it)."),
@@ -86,7 +86,7 @@ SCHEMA = (
             "rip = rip again, notify = rip and tell you, skip = eject without ripping.",
             ("rip", "notify", "skip")),
     Setting("MIN_FREE_GB_DVD", 20, "int", "before", "Free space needed for a DVD (GB)",
-            "Free space ARM needs in the raw, transcode and completed folders before ripping a DVD."),
+            "Free space A2RM needs in the raw, transcode and completed folders before ripping a DVD."),
     Setting("MIN_FREE_GB_BLURAY", 80, "int", "before", "Free space needed for a Blu-ray (GB)",
             "Same for Blu-rays."),
     Setting("DISK_SPACE_ACTION", "wait", "choice", "before", "When space is short",
@@ -140,7 +140,7 @@ SCHEMA = (
     Setting("PREFERRED_LANGUAGE", "eng", "lang", "languages", "Preferred language",
             "Picks the main version when a disc has the movie in several languages."),
     Setting("KEEP_OTHER_LANGUAGE_VERSIONS", False, "bool", "languages", "Keep other language versions",
-            "Also rip the movie's versions in other languages. When ARM can't tell which version is yours, "
+            "Also rip the movie's versions in other languages. When A2RM can't tell which version is yours, "
             "it keeps them all and asks."),
     Setting("TRIM_TRACKS", False, "bool", "languages", "Keep only my languages",
             "Only keep audio and subtitle tracks in the languages below (plus commentary and forced subtitles) "
@@ -175,17 +175,17 @@ SCHEMA = (
             "Where Jellyfin sees your NAS media share."),
     Setting("JELLYFIN_FOLDER_MAP", "movies=Movies;tv=TV Shows;unidentified=unidentified;music=Music",
             "str", "jellyfin", "Folder names",
-            "ARM folder = folder under the media share, separated by semicolons."),
+            "A2RM folder = folder under the media share, separated by semicolons."),
     Setting("JELLYFIN_VERIFY_MATCH", True, "bool", "jellyfin", "Check Jellyfin's match",
-            "After the scan, check Jellyfin matched the same movie or show ARM ripped."),
+            "After the scan, check Jellyfin matched the same movie or show A2RM ripped."),
 
     Setting("WRITE_NFO", True, "bool", "jellyfin", "Write .nfo files with the TMDb id",
             "Put a minimal movie.nfo / tvshow.nfo (title, year, TMDb and IMDb ids) in each movie or show folder "
-            "ARM files, so Jellyfin matches exactly that film. Rewritten when you change the title; NFO files "
-            "ARM didn't write are left alone."),
+            "A2RM files, so Jellyfin matches exactly that film. Rewritten when you change the title; NFO files "
+            "A2RM didn't write are left alone."),
     Setting("TMM_URL", "", "str", "jellyfin", "tinyMediaManager address",
             "Optional: tinyMediaManager's HTTP API (e.g. http://tmm-host:7878) to update and scrape new items "
-            "after ARM files one. Empty = off."),
+            "after A2RM files one. Empty = off."),
     Setting("TMM_API_KEY", "", "secret", "jellyfin", "tinyMediaManager API key",
             "From tinyMediaManager: Settings > General > HTTP API."),
 
