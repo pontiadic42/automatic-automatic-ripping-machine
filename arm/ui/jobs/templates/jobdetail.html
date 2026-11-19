@@ -37,7 +37,7 @@
         <section class="arm-card arm-job-hero">
             <div class="arm-job-top">
                 <a id="posterClick" href="#" class="arm-job-poster" title="Show the plot">
-                    {% if jobs.poster_url %}<img src="{{ jobs.poster_url }}" alt="Poster">
+                    {% if jobs.poster_url and jobs.poster_url != "None" %}<img src="{{ jobs.poster_url }}" alt="Poster">
                     {% else %}<img src="static/img/{{ 'music' if is_music else 'none' }}.png" alt="No poster">{% endif %}
                 </a>
                 <div class="arm-job-info">
@@ -152,7 +152,7 @@
                     {% endfor %}
                     {% for field in ["poster_url", "poster_url_auto", "poster_url_manual"] %}
                         <tr><td><strong>{{ field }}</strong></td>
-                            <td>{% if jobs[field] %}<a href="{{ jobs[field] }}"><img alt="Poster" src="{{ jobs[field] }}" title="{{ jobs[field] }}" width=50></a><br/>{{ jobs[field] }}
+                            <td>{% if jobs[field] and jobs[field] != "None" %}<a href="{{ jobs[field] }}"><img alt="Poster" src="{{ jobs[field] }}" title="{{ jobs[field] }}" width=50></a><br/>{{ jobs[field] }}
                                 {% else %}<img src="static/img/none.png" alt="Not found" width=50><br/>None{% endif %}</td></tr>
                     {% endfor %}
                     {% for field in ["devpath", "mountpoint", "hasnicetitle", "errors", "disctype", "label", "ejected", "pid"] %}
