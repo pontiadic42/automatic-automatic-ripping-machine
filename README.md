@@ -73,7 +73,7 @@ A2RM setting with its default.
   after the rip (`HW_ENCODER_FALLBACK`). The job page shows which encoder each job actually used.
 - **Database locks** at the end of the manual wait no longer kill the job (it retries), and drives that aren't passed
   into the container aren't shown.
-- Optional: keep only your audio/subtitle languages when transcoding (Settings > Automation > **Languages**, with
+- Optional: keep only your audio/subtitle languages when transcoding (Settings > A2RM > **Languages**, with
   drop-downs).
 
 ### Housekeeping
@@ -81,8 +81,8 @@ A2RM setting with its default.
   successfully, and a daily summary notification.
 - **Library health check** (every `HEALTH_CHECK_DAYS`, default 7; never while ripping or transcoding): empty or
   unfinalized files, files ffprobe can't read or without video, movies far from TMDb's runtime, probable duplicates.
-  Read-only; results on Settings > Automation > Library health and in the daily summary.
-- **Library > Manage files:** everything in `movies/`, `tv/` and `unidentified/`, including files A2RM didn't make.
+  Read-only; results on Library > Health and in the daily summary.
+- **Library > Files** (and each job's page): everything in `movies/`, `tv/` and `unidentified/`, including files A2RM didn't make.
   Flags ARM's `_<number>` copy folders, loose files, MakeMKV names never renamed, season-only show folders, missing
   years and the same title in several folders. Per item: set type, title, year, IMDb id (TMDb search), season and
   first episode, and a role per file; preview every move, then apply. Merges never overwrite (same-size files stay
@@ -95,9 +95,12 @@ A2RM setting with its default.
   dismiss), and recently finished rips.
 - A poster **Library** with filters (movies, TV, music, unidentified, failed) and search.
 - Works on phones (bottom tab bar, list layouts), light and dark themes.
-- **Settings > Automation** page for every A2RM option, plus a **Hardware check** page (GPU, permissions, VA-API
-  driver, what HandBrake can use, a test encode, encoder suggestions for your GPU, optional Blu-ray GPU decoding)
-  and a **Library health** page.
+- **One page per job:** banners and buttons at the top, then Identify (TMDb search with large posters, pick the
+  season, or type the title), Files (language versions, rename and move), Disc (titles, stills, encoder) and Details
+  (ARM's record, tracks, rip settings).
+- **Library** tabs: Titles, Files, Health, History. **Settings** tabs: A2RM (every A2RM option), Ripping, Hardware
+  (GPU check, test encode, encoder suggestions, hardware-encoding settings), Notifications (ntfy and Apprise), Music,
+  Interface, System (server, drives, database), Help.
 
 ### Fixes to ARM itself
 A2RM also carries a set of bug fixes to ARM 2.24.4: wrong titles from disc labels, crashes in identification,
@@ -108,7 +111,8 @@ were also offered to ARM as pull requests.
 ## Configuration
 
 Everything A2RM adds is a normal setting in `arm.yaml` (added automatically on first start) and can be changed on
-**Settings > Automation** in the web UI. Each feature can be switched off. Things you'll want to set:
+**Settings > A2RM** in the web UI (phone notifications under Settings > Notifications, hardware encoding under
+Settings > Hardware). Each feature can be switched off. Things you'll want to set:
 
 | Setting | What it's for |
 |---|---|
@@ -180,7 +184,7 @@ is in [`arm_wiki/`](arm_wiki).
    `DISABLE_LOGIN: false`); change it after the first start. Like ARM, the home page (drives and recent rips) can be
    seen without logging in.
 
-4. **Set A2RM up** on **Settings > Automation**: at least your phone notifications (`NTFY_SERVER`, `NTFY_TOPIC`,
+4. **Set A2RM up** under **Settings**: at least your phone notifications on the Notifications tab (`NTFY_SERVER`, `NTFY_TOPIC`,
    `ARM_PHONE_URL`) and, if you use it, Jellyfin. Every A2RM setting is described there and in
    [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md#every-a2rm-setting).
 

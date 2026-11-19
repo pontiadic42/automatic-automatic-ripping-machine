@@ -6,6 +6,10 @@ A2RM has no version numbers of its own yet; changes are listed by date. The Dock
 (`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
 
 ### 2026-11-18
+- **One page per job** (Identify, Files, Disc, Details) instead of separate title search, results, custom title and
+  rip-settings pages; TMDb results as a grid of large posters; the file editor is on the job page. **Library** and
+  **Settings** are each one page with tabs; the A2RM settings are split over the A2RM, Hardware and Notifications tabs
+  and each tab saves only its own settings. Old addresses redirect.
 - **A2RM, not ARM:** the web UI, phone notifications and setting descriptions say A2RM where they mean A2RM; the
   footer and Help tab link to this repository and the ARM vs A2RM page; the "update available" check against ARM's
   GitHub (which always said there was an update) is gone; MusicBrainz sees A2RM as the client; ARM's install

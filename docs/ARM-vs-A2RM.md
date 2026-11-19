@@ -95,7 +95,7 @@ Runs from one scheduled command (`python3 -m arm.automation.maintenance tick`, e
 
 ## Library management (all A2RM)
 
-**Library > Manage files** works on everything in `movies/`, `tv/` and `unidentified/`, including files A2RM (or
+**Library > Files** (and the Files section of each job's page) works on everything in `movies/`, `tv/` and `unidentified/`, including files A2RM (or
 ARM) didn't make. It flags ARM's numbered copy folders, loose files, MakeMKV names, season-only folders, missing years
 and the same title in more than one folder. Per item you can set the type, title, year, IMDb id, season and the role
 of each file, preview every move, apply, and undo. Merges never overwrite anything. Removed items go to a trash folder
@@ -113,9 +113,9 @@ only. A2RM keeps those and adds [ntfy](https://ntfy.sh) phone notifications **wi
 | ARM | A2RM |
 |---|---|
 | Home: a card per active job | Home: a "bay" per drive (empty, identifying, waiting for you, ripping) with steps, progress and time left; a "needs you" strip with buttons; recent rips |
-| Job history table | Poster **Library** with filters (movies, TV, music, unidentified, failed) and search; the history table is still there |
-| Job details: ARM's fields | Also: confidence and reasons, titles on the disc and why each was kept or skipped, stills, language versions, encoder used, season choice, movie/TV switch |
-| Settings: ARM's tabs | Also **Settings > Automation** (every A2RM option, grouped, with help text), a **Hardware check** page and a **Library health** page |
+| Job history table | **Library** with tabs: a poster grid with filters (movies, TV, music, unidentified, failed) and search, Files, Health, and the history table |
+| Job details: ARM's fields; title search, results, custom title and rip settings on separate pages | One page per job with Identify (search with large posters, seasons, or type the title), Files, Disc and Details sections. Also: confidence and reasons, titles on the disc and why each was kept or skipped, stills, language versions, encoder used, season choice, movie/TV switch |
+| Settings: ARM's tabs | One set of tabs: A2RM (every A2RM option, grouped, with help text), Ripping, Hardware (GPU check and test encode), Notifications (ntfy and Apprise), Music, Interface, System, Help |
 | Desktop layout | Works on phones (bottom tab bar), light and dark themes |
 
 ## Docker image
@@ -161,7 +161,7 @@ Nothing else leaves your network. Title-card OCR runs locally.
 
 ## Every A2RM setting
 
-All in `arm.yaml`, added on first start, and on **Settings > Automation** in the web UI. Defaults in brackets.
+All in `arm.yaml`, added on first start, and in the web UI under **Settings** (the A2RM, Notifications and Hardware tabs). Defaults in brackets.
 
 - **Phone notifications:** `NTFY_SERVER` (""), `NTFY_TOPIC` (""), `NTFY_TOKEN` (""), `NTFY_SEND_ALL` (off),
   `ARM_PHONE_URL` ("")
