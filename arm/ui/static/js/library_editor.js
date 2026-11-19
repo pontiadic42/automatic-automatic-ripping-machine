@@ -73,7 +73,12 @@
         data.set("action", "preview");
         data.set("partial", "1");
         submitter.disabled = true;
-        fetch(form.action, {method: "POST", body: data, credentials: "same-origin"})
+        // getAttribute: the buttons are named "action", which hides form.action
+        fetch(form.getAttribute("action"), {method: "POST", body: data, credentials: "same-origin"})
+            .then(function (r) {
+                if (!r.ok) { throw new Error("HTTP " + r.status); }
+                return r;
+            })
             .then(function (r) { return r.text(); })
             .then(function (html) {
                 const holder = document.createElement("div");
