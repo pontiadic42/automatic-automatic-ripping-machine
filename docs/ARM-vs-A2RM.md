@@ -101,6 +101,10 @@ and the same title in more than one folder. Per item you can set the type, title
 of each file, preview every move, apply, and undo. Merges never overwrite anything. Removed items go to a trash folder
 that is only emptied when you confirm.
 
+Movie files can get an edition label (Theatrical, Extended cut, Director's cut, Unrated, Special edition, Remastered,
+IMAX, or your own text): Apply names them `Title (Year) - Extended cut.mkv`, which Jellyfin shows as versions of one
+movie. Each movie file shows its length so the cuts can be told apart.
+
 ## Notifications
 
 ARM sends notifications through Apprise and its built-in services (Pushbullet, Pushover, etc.); they are messages

@@ -6,6 +6,9 @@ A2RM has no version numbers of its own yet; changes are listed by date. The Dock
 (`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
 
 ### 2026-11-19
+- **Edition labels** in the file editor (job page > Files, Library > Files): pick Theatrical, Extended cut,
+  Director's cut, ... or type one for each movie file; Apply names it `Title (Year) - Extended cut.mkv` so Jellyfin
+  shows the cuts as versions. Each movie file shows its length.
 - **Fixes from ARM's open pull requests** (not merged by ARM yet): random login key per install (`ARM_SECRET_KEY` to
   set your own), escaped page messages, login on drive scan / system info / database update, and actions started from
   another website are refused. Ripping: apostrophes in labels, hybrid Blu-rays, one bad MakeMKV title, Abandon
