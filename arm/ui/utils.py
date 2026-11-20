@@ -2,6 +2,7 @@
 Main catch all page for functions for the A.R.M ui
 """
 import hashlib
+import codecs
 import os
 import shutil
 import json
@@ -27,7 +28,7 @@ from arm.models.job import Job
 from arm.models.system_info import SystemInfo
 from arm.models.ui_settings import UISettings
 from arm.models.user import User
-from arm.ui import app, db
+from arm.ui import app, db, pending_changes
 from arm.ui.metadata import tmdb_search, get_tmdb_poster, tmdb_find, call_omdb_api
 from arm.ui.settings import DriveUtils
 
@@ -50,15 +51,24 @@ def database_updater(args, job, wait_time=90):
     """
     # Loop through our args and try to set any of our job variables
     for (key, value) in args.items():
-        setattr(job, key, value)
         app.logger.debug(f"Setting {key}: {value}")
+    # a rollback discards the whole transaction, so keep the caller's other changes for the retry
+    changes = pending_changes.collect(db.session)
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
+            if i:
+                pending_changes.replay(db.session, changes)
+            # (re)apply the values, a rollback after a failed try discards them
+            for (key, value) in args.items():
+                setattr(job, key, value)
             db.session.commit()
             app.logger.debug("successfully written to the database")
             return True
         except Exception as error:
             if "locked" in str(error):
+                # the failed flush leaves the session unusable until it is rolled back
+                pending_changes.collect(db.session, changes)
+                db.session.rollback()
                 sleep(1)
                 app.logger.debug(f"database is locked - trying in 1 second {i}/{wait_time} - {error}")
             else:
@@ -369,41 +379,66 @@ def generate_comments():
     return comments
 
 
-def generate_full_log(full_path):
-    """
-    Gets/tails all lines from log file
-    :param full_path: full path to job logfile
-    :return: None
-    """
-    try:
-        with open(full_path) as read_log_file:
-            while True:
-                yield read_log_file.read()
-                sleep(1)
-    except IOError:
-        try:
-            with open(full_path, encoding="utf8", errors='ignore') as read_log_file:
-                while True:
-                    yield read_log_file.read()
-                    sleep(1)
-        except FileNotFoundError as error:
-            raise FileNotFoundError("Not found with utf8 encoding") from error
+LOG_CHUNK_BYTES = 1024 * 1024
 
 
-def generate_arm_cat(full_path):
+def read_log_data(full_path, offset=0, limit=LOG_CHUNK_BYTES, file_id=None):
+    """Read bounded raw bytes and return enough cursor information to detect rotation."""
+    with open(full_path, "rb") as log_file:
+        stat = os.fstat(log_file.fileno())
+        # The prefix also detects common copy/truncate rotations that retain the inode.
+        prefix = log_file.read(64)
+        current_id = f"{stat.st_dev}:{stat.st_ino}:{hashlib.sha256(prefix).hexdigest()}"
+        start = offset if 0 <= offset <= stat.st_size and file_id in (None, current_id) else 0
+        log_file.seek(start)
+        data = log_file.read(limit)
+    return data, start, start + len(data), current_id
+
+
+def read_log_chunk(full_path, offset=0, limit=LOG_CHUNK_BYTES):
+    """Read tolerant text, ending on a line boundary where possible, without waiting."""
+    data, start, next_offset, _file_id = read_log_data(full_path, offset, limit)
+    if len(data) == limit and b"\n" in data:
+        data = data[:data.rindex(b"\n") + 1]
+        next_offset = start + len(data)
+    return data.decode("utf-8", errors="replace"), next_offset
+
+
+def generate_full_log(full_path, offset=0):
     """
-    Read from log file and only output ARM: logs
+    Yield the log from ``offset`` to its current end, then stop (no endless per-line sleeping).
     :param full_path: full path to job logfile
-    :return: None
     """
-    read_log_file = open(full_path)
     while True:
-        new = read_log_file.readline()
-        if new:
-            if "ARM:" in new:
-                yield new
-            else:
-                sleep(1)
+        text, next_offset = read_log_chunk(full_path, offset)
+        if next_offset == offset:
+            return
+        yield text
+        offset = next_offset
+
+
+def generate_arm_cat(full_path, offset=0, end=None):
+    """Stream a finite ARM-only snapshot, preserving lines across bounded reads."""
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    pending = ""
+    with open(full_path, "rb") as log_file:
+        size = os.fstat(log_file.fileno()).st_size
+        end = size if end is None else min(end, size)
+        offset = offset if 0 <= offset <= end else 0
+        log_file.seek(offset)
+        while offset < end:
+            data = log_file.read(min(LOG_CHUNK_BYTES, end - offset))
+            if not data:
+                break
+            offset += len(data)
+            lines = (pending + decoder.decode(data)).split("\n")
+            pending = lines.pop()
+            for line in lines:
+                if "ARM:" in line:
+                    yield line + "\n"
+        pending += decoder.decode(b"", final=True)
+        if "ARM:" in pending:
+            yield pending
 
 
 def setup_database():

@@ -123,6 +123,9 @@ AUTO_EJECT: true
 # This over-rides any other abcde.conf files
 ABCDE_CONFIG_FILE: "/etc/arm/config/abcde.conf"
 
+# Seconds of log inactivity before a stalled music rip is killed (0 = disabled)
+MUSIC_STALL_TIMEOUT: 1800
+
 # Path to raw MakeMKV directory
 # Destination for MakeMKV and source for HandBrake
 RAW_PATH: "/home/arm/media/raw/"
@@ -730,3 +733,11 @@ HEALTH_CHECK_TIME: "04:00"
 # Decode 5 seconds from the middle of each file to catch damaged video (slower: a few seconds per
 # file).
 HEALTH_CHECK_DECODE: false
+
+# Any other Apprise notification URLs, separated by spaces or commas
+# See https://github.com/caronc/apprise/wiki for the URL format of each service, e.g.
+# Email/Gmail: mailtos://user:app_password@gmail.com
+# Home Assistant: hassios://hass.example.com/long_lived_access_token
+# Signal: signals://signal-api.example.com/+15551234567/+15557654321
+# Leave blank to disable
+APPRISE_URLS: ""

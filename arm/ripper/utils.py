@@ -15,6 +15,7 @@ import tempfile
 from logging import Logger
 from pathlib import Path, PurePath
 from math import ceil
+from urllib.parse import urlunsplit
 
 import bcrypt
 import requests
@@ -26,12 +27,13 @@ from netifaces import interfaces, ifaddresses, AF_INET
 import arm.config.config as cfg
 from arm.ripper.ProcessHandler import arm_subprocess
 from arm.ui import db  # needs to be imported before models
+from arm.ui import pending_changes
 from arm.models.job import Job, JobState
 from arm.models.notifications import Notifications
 from arm.models.track import Track
 from arm.models.user import User
 from arm.models.system_drives import SystemDrives
-from arm.ripper import apprise_bulk
+from arm.ripper import apprise_bulk, abcde
 
 NOTIFY_TITLE = "ARM notification"
 
@@ -94,10 +96,16 @@ def notify(job, title: str, body: str):
         apobj.add('pover://' + str(cfg.arm_config["PO_USER_KEY"]) + "@" + str(cfg.arm_config["PO_APP_KEY"]))
     if cfg.arm_config["JSON_URL"] != "":
         apobj.add(str(cfg.arm_config["JSON_URL"]).replace("http://", "json://").replace("https://", "jsons://"))
-    try:
-        apobj.notify(body, title=title)
-    except Exception as error:  # noqa: E722
-        logging.error(f"Failed sending notifications. error:{error}. Continuing processing...")
+    # Any other Apprise URLs, separated by spaces or commas. Never log them, they hold credentials
+    if cfg.arm_config.get("APPRISE_URLS"):
+        if not apobj.add(str(cfg.arm_config["APPRISE_URLS"])):
+            logging.error("One or more APPRISE_URLS could not be loaded, check their format.")
+    # Without configured services apprise logs "There are no service(s) to notify" as an error (upstream #1865).
+    if len(apobj):
+        try:
+            apobj.notify(body, title=title)
+        except Exception as error:  # noqa: E722
+            logging.error(f"Failed sending notifications. error:{error}. Continuing processing...")
 
     # Bulk send notifications, using the config set on the ripper config page
     if cfg.arm_config["APPRISE"] != "":
@@ -118,6 +126,18 @@ def bash_notify(cfg, title, body):
         arm_subprocess(["/usr/bin/env", "bash", cfg['BASH_SCRIPT'], title, body])
 
 
+def ui_address(port=None):
+    """
+    The ARM UI address used in notifications: UI_BASE_URL when set, else http://<ip>:<port>.
+    The settings-page test notification uses the same address (#1769).
+    """
+    base = str(cfg.arm_config.get("UI_BASE_URL") or "").strip()
+    if base:
+        return base.rstrip("/")
+    # ARM's own web server listens on plain HTTP; UI_BASE_URL is how a TLS proxy address is given.
+    return urlunsplit(("http", f"{check_ip()}:{port or cfg.arm_config['WEBSERVER_PORT']}", "", "", ""))
+
+
 def notify_entry(job):
     """
     Notify On Entry\n
@@ -130,10 +150,7 @@ def notify_entry(job):
                                  f"{job.disctype} at {datetime.datetime.now()}")
     database_adder(notification)
     if job.disctype in ["dvd", "bluray"]:
-        if cfg.arm_config["UI_BASE_URL"] == "":
-            display_address = (f"http://{check_ip()}:{job.config.WEBSERVER_PORT}")
-        else:
-            display_address = str(cfg.arm_config["UI_BASE_URL"])
+        display_address = ui_address(job.config.WEBSERVER_PORT)
         # Send the notifications
         notify(job, NOTIFY_TITLE,
                f"Found disc: {job.title}. Disc type is {job.disctype}. Main Feature is {job.config.MAINFEATURE}."
@@ -481,40 +498,84 @@ def find_largest_file(files, mkv_out_path):
     return largest_file_name
 
 
+def _run_abcde(command, log, log_path, poll=30):
+    """
+    Run abcde with its output in the job log. A scratched CD can make cdparanoia retry one sector
+    forever, so abcde is killed when the log hasn't grown for MUSIC_STALL_TIMEOUT seconds (upstream #1910;
+    0 = never). Returns the error for a stalled rip, else None; a failed abcde raises CalledProcessError.
+    """
+    stall_timeout = cfg.arm_config.get("MUSIC_STALL_TIMEOUT")
+    stall_timeout = 1800 if stall_timeout in (None, "") else int(stall_timeout)
+    proc = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+    last_size, last_change = -1, time.time()
+    while True:
+        try:
+            proc.wait(timeout=poll)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        size = os.path.getsize(log_path) if os.path.exists(log_path) else last_size
+        if size != last_size:
+            last_size, last_change = size, time.time()
+        elif stall_timeout > 0 and time.time() - last_change > stall_timeout:
+            proc.kill()
+            proc.wait()
+            return (f"abcde stalled for over {stall_timeout // 60} minutes with no log activity, "
+                    "so the rip was stopped. Check the disc for damage.")
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, command)
+    return None
+
+
 def rip_music(job, logfile):
     """
     Rip music CD using abcde config\n
+    abcde can exit 0 after an incomplete rip (#1526), so success also requires its "Finished." line
+    and one non-empty output file per audio track, recorded by this invocation.\n
     :param job: job object
     :param logfile: location of logfile\n
     :return: Bool on success or fail
     """
+    if job.disctype != "music":
+        return False
 
+    def fail(err):
+        database_updater({"status": JobState.FAILURE.value, "errors": err}, job)
+        logging.error(err)
+        return False
+
+    logging.info("Disc identified as music")
     abcfile = cfg.arm_config["ABCDE_CONFIG_FILE"]
-    if job.disctype == "music":
-        logging.info("Disc identified as music")
-        # If user has set a cfg.arm_config file with ARM use it
-        if os.path.isfile(abcfile):
-            cmd = f'abcde -d "{job.devpath}" -c {abcfile} >> "{os.path.join(job.config.LOGPATH, logfile)}" 2>&1'
-        else:
-            cmd = f'abcde -d "{job.devpath}" >> "{os.path.join(job.config.LOGPATH, logfile)}" 2>&1'
-
-        logging.debug(f"Sending command: {cmd}")
-        args = {"status": JobState.AUDIO_RIPPING.value}
-        database_updater(args, job)
-
-        try:
-            # TODO check output and confirm all tracks ripped; find "Finished\.$"
-            subprocess.check_output(cmd, shell=True).decode("utf-8")
-            logging.info("abcde call successful")
-            args = {"status": JobState.IDLE.value}
-            database_updater(args, job)
-            return True
-        except subprocess.CalledProcessError as ab_error:
-            err = f"Call to abcde failed with code: {ab_error.returncode} ({ab_error.output})"
-            args = {"status": JobState.FAILURE.value, "errors": err}
-            database_updater(args, job)
-            logging.error(err)
-    return False
+    try:
+        from arm.ripper import music_brainz
+        expected = len(music_brainz.get_disc_id(job).tracks)
+    except Exception as error:  # the track count only strengthens the check
+        logging.warning(f"Could not read the disc's track count, output files will not be counted: {error}")
+        expected = None
+    log_path = os.path.join(job.config.LOGPATH, logfile)
+    database_updater({"status": JobState.AUDIO_RIPPING.value}, job)
+    offset = os.path.getsize(log_path) if os.path.exists(log_path) else 0
+    try:
+        with abcde.output_manifest(abcfile) as (config, manifest, types):
+            command = ["abcde", "-d", job.devpath, "-c", str(config)]
+            logging.debug(f"Sending command: {command}")
+            with open(log_path, "ab") as log:
+                stalled = _run_abcde(command, log, log_path)
+            if stalled:
+                return fail(stalled)
+            with open(log_path, "rb") as log:
+                log.seek(offset)
+                output = log.read().decode("utf-8", errors="replace")
+            if not re.search(r"^Finished\.(?: Not cleaning .+)?\s*$", output, re.MULTILINE):
+                return fail("abcde did not report 'Finished.'; the rip is incomplete")
+            error = abcde.output_error(manifest, types, expected)
+            if error:
+                return fail(error)
+    except (OSError, subprocess.CalledProcessError) as ab_error:
+        return fail(f"Call to abcde failed: {ab_error}")
+    database_updater({"status": JobState.IDLE.value}, job)
+    logging.info("abcde call successful")
+    return True
 
 
 def rip_data(job):
@@ -641,14 +702,15 @@ def put_track(job, t_no, seconds, aspect, fps, mainfeature, source, filename="",
     :param int filesize: size of track in bytes
     """
 
+    # t_no is a label, not necessarily numeric (MusicBrainz "A1"; #1846): never int() it.
     logging.debug(
-        f"Track #{int(t_no):02} Length: {seconds: >4} fps: {float(fps):2.3f} "
+        f"Track #{str(t_no):>2} Length: {seconds: >4} fps: {float(fps):2.3f} "
         f"aspect: {aspect: >4} Mainfeature: {mainfeature} Source: {source} "
         f"Chapters: {chapters} Filesize: {filesize}")
 
     job_track = Track(
         job_id=job.job_id,
-        track_number=t_no,
+        track_number=str(t_no),
         length=seconds,
         aspect_ratio=aspect,
         fps=fps,
@@ -723,27 +785,40 @@ def database_updater(args, job, wait_time=90):
         db.session.rollback()
         return False
 
-    def set_values():
-        for (key, value) in args.items():
-            setattr(job, key, value)
-            logging.debug(f"ID:{job.job_id} {key}={value}:{type(value)}")
+    for (key, value) in args.items():
+        logging.debug(f"ID:{job.job_id} {key}={value}:{type(value)}")
 
-    set_values()
+    def set_values():
+        # no_autoflush: after a rollback, reading the job would otherwise flush (and hit the lock)
+        with db.session.no_autoflush:
+            for (key, value) in args.items():
+                setattr(job, key, value)
+
+    # A rollback discards the whole transaction, so keep the caller's other changes for the
+    # retry too (upstream #1883): fields set directly before this call, rows added, autoflushed ones
+    changes = pending_changes.collect(db.session)
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
+            if i:
+                pending_changes.replay(db.session, changes)
+            set_values()
             db.session.commit()
             logging.debug("successfully written to the database")
             return True
         except Exception as error:
             if _is_locked(error):
+                pending_changes.collect(db.session, changes)
                 _safe_rollback()
                 time.sleep(1)
                 logging.debug(f"database is locked - try {i}/{wait_time}")
-                set_values()
             else:
                 logging.debug(f"Error: {error}")
                 _safe_rollback()
                 raise RuntimeError(str(error)) from error
+    # Leave the values (and the caller's other changes) on the session for the next commit
+    with contextlib.suppress(Exception):
+        pending_changes.replay(db.session, changes)
+        set_values()
     logging.error(f"database is locked after {wait_time}s; update was not committed "
                   "(kept on the job, saved with the next commit)")
     return False
@@ -758,14 +833,19 @@ def database_adder(obj_class):
     :param obj_class: Job/Config/Track/ etc
     :return: True if success
     """
+    changes = pending_changes.collect(db.session)
     for i in range(90):  # give up after the users wait period in seconds
         try:
+            if i:
+                pending_changes.replay(db.session, changes)
             logging.debug(f"Trying to add {type(obj_class).__name__}")
             db.session.add(obj_class)
             db.session.commit()
             logging.debug(f"successfully written {type(obj_class).__name__} to the database")
             return True
         except Exception as error:
+            if _is_locked(error):
+                pending_changes.collect(db.session, changes)
             _safe_rollback()
             if _is_locked(error):
                 time.sleep(1)
