@@ -27,11 +27,6 @@ def size_text(size):
     return f"{max(0, size) // 1024} KB"
 
 
-def _active_job():
-    from arm.automation import health
-    return health.busy()
-
-
 @route_library_files.route('/library/files', methods=['GET', 'POST'])
 @login_required
 def files():
@@ -140,8 +135,6 @@ def item():
         action = request.form.get("action")
         values, roles, editions = _form_values(), _form_roles(), _form_editions()
         try:
-            if action in ("apply", "trash") and _active_job():
-                raise library.LibraryError("A disc is ripping or transcoding; try again when it's done.")
             if action == "trash":
                 library.trash(found["id"])
                 flash(f"Moved {found['id']} to the trash. Undo it from the list of changes.", "success")

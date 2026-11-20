@@ -105,6 +105,9 @@ Movie files can get an edition label (Theatrical, Extended cut, Director's cut, 
 IMAX, or your own text): Apply names them `Title (Year) - Extended cut.mkv`, which Jellyfin shows as versions of one
 movie. Each movie file shows its length so the cuts can be told apart.
 
+The editor works while discs rip. It only refuses a change to the folder a running job is using or will file into
+(its own folder, or one with the same title and year), and says which job is in the way.
+
 ## Notifications
 
 ARM sends notifications through Apprise and its built-in services (Pushbullet, Pushover, etc.); they are messages

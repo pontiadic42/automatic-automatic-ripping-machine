@@ -586,6 +586,7 @@ def _add_move(source, target, role, moves, same, taken):
 def apply(item_id, values, roles=None, editions=None):
     """Do the plan (worked out again here, not trusted from the page). Returns the log entry."""
     result = plan(item_id, values, roles, editions)
+    check_not_in_use([item_id, result["target"]], [title_key(result["values"]["title"], result["values"]["year"])])
     if not result["moves"]:
         raise LibraryError("Nothing to change: the names are already right.")
     source = absolute(item_id)
@@ -714,6 +715,7 @@ def trash(item_id):
     source = absolute(item_id)
     if item_of(source) != item_id.strip("/") or not os.path.exists(source):
         raise LibraryError(f"{item_id} isn't in the library any more. Rescan.")
+    check_not_in_use([item_id])
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     target = os.path.join(completed(), TRASH, stamp, item_id.strip("/"))
     os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -768,6 +770,7 @@ def undo(entry_id):
     entry = next((e for e in entries if e["id"] == entry_id), None)
     if entry is None or entry.get("undone"):
         raise LibraryError("That change can't be undone (already undone, or too old).")
+    check_not_in_use({item_of(absolute(rel)) for move in entry["moves"] for rel in move})
     for source, target in entry["moves"]:
         if not os.path.exists(absolute(target)):
             raise LibraryError(f"{target} isn't there any more; nothing was changed.")
@@ -795,3 +798,65 @@ def undo(entry_id):
     store.update_state(library_log=[dict(e, undone=True) if e["id"] == entry_id else e for e in entries])
     logging.info(f"Library: undid change {entry_id} ({entry['summary']})")
     return entry
+
+
+# ---------------------------------------------------------------- running jobs (C42)
+
+FINISHED = ("success", "fail")
+
+
+def _alive(job):
+    """The job's own ripper process is still running (a reused PID has another hash)"""
+    import psutil
+    try:
+        return bool(job.pid) and hash(psutil.Process(job.pid)) == job.pid_hash
+    except (psutil.Error, TypeError):
+        return False
+
+
+def running_jobs():
+    """Jobs still ripping, transcoding, waiting or identifying: what they're called and where they file"""
+    jobs = []
+    try:
+        from arm.models.job import Job
+        from arm.ui import db
+        try:
+            for job in Job.query.filter(Job.status.notin_(FINISHED)).all():
+                if not _alive(job):
+                    continue  # a job left "active" by a crash isn't using anything
+                title = job.title_manual or job.title or ""
+                year = job.year if job.year and job.year not in ("0000", "None") else ""
+                name = f"{title} ({year})" if year and title else title or job.label
+                jobs.append({"job_id": job.job_id, "name": name,
+                             "key": title_key(title, year) if title else "",
+                             "item": item_of(job.path) if job.path else None})
+        finally:
+            db.session.rollback()  # end the read so the ripper can write
+    except Exception as error:  # noqa: BLE001 - can't tell: be careful
+        logging.info(f"Library: couldn't read the running jobs: {error}")
+        return [{"job_id": "?", "name": "a running job", "key": "", "item": None, "unknown": True}]
+    return jobs
+
+
+def _item_key(item_id):
+    parsed = parse_name(os.path.basename(str(item_id).strip("/")))
+    return title_key(parsed["title"], parsed["year"]) if parsed["title"] else ""
+
+
+def check_not_in_use(item_ids, keys=()):
+    """
+    Refuse a change that touches a folder a running job is using or will file into (C42): its own folder,
+    an unidentified/<label> (job N) folder, or a folder with the same title and year. Everything else is
+    fine while a disc rips: these are moves inside the completed library, not the rip's own folders.
+    """
+    item_ids = [str(i).strip("/") for i in item_ids if i]
+    keys = {k for k in keys if k} | {_item_key(i) for i in item_ids}
+    keys.discard("")
+    for job in running_jobs():
+        if job.get("unknown"):
+            raise LibraryError("Couldn't check which jobs are running; try again in a moment.")
+        hit = next((i for i in item_ids if i == job["item"] or f"(job {job['job_id']})" in i), None)
+        if hit or (job["key"] and job["key"] in keys):
+            where = hit or job["item"] or "a folder with that title"
+            raise LibraryError(f"Job {job['job_id']} ({job['name']}) is still running and uses {where}. "
+                               "Try again when it's done.")

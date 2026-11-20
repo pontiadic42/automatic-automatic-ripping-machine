@@ -9,6 +9,7 @@ A2RM has no version numbers of its own yet; changes are listed by date. The Dock
 - **Edition labels** in the file editor (job page > Files, Library > Files): pick Theatrical, Extended cut,
   Director's cut, ... or type one for each movie file; Apply names it `Title (Year) - Extended cut.mkv` so Jellyfin
   shows the cuts as versions. Each movie file shows its length.
+- The file editor works while a disc rips; it only refuses changes to the folder that rip is using or will file into.
 - **Fixes from ARM's open pull requests** (not merged by ARM yet): random login key per install (`ARM_SECRET_KEY` to
   set your own), escaped page messages, login on drive scan / system info / database update, and actions started from
   another website are refused. Ripping: apostrophes in labels, hybrid Blu-rays, one bad MakeMKV title, Abandon

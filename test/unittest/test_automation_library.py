@@ -28,8 +28,11 @@ class LibraryCase(unittest.TestCase):
         self.patch.start()
         self.owners = patch.object(library, "tracked_jobs", return_value={})
         self.owners.start()
+        self.running = patch.object(library, "running_jobs", return_value=[])
+        self.running.start()
 
     def tearDown(self):
+        self.running.stop()
         self.owners.stop()
         self.patch.stop()
         self.tmp.cleanup()
@@ -286,12 +289,14 @@ class TestPages(LibraryCase):
         self.assertEqual(undo.status_code, 302)
         self.assertTrue(self.exists(f"{item}/7000085651_1.mkv"))
 
-    def test_apply_waits_for_a_rip(self):
+    def test_apply_waits_for_a_rip_of_the_same_title(self):
         self.write("movies/X/X.mkv")
-        with patch("arm.automation.health.busy", return_value=True):
-            self.client.post("/library/files/item", data={"id": "movies/X", "kind": "movie", "title": "X",
-                                                          "year": "2001", "action": "apply"})
+        job = {"job_id": 47, "name": "X (2001)", "key": library.title_key("X", "2001"), "item": None}
+        with patch.object(library, "running_jobs", return_value=[job]):
+            page = self.client.post("/library/files/item", data={"id": "movies/X", "kind": "movie", "title": "X",
+                                                                 "year": "2001", "action": "apply"})
         self.assertTrue(self.exists("movies/X/X.mkv"))
+        self.assertIn(b"Job 47 (X (2001)) is still running", page.data)
 
     def test_unknown_item_redirects(self):
         self.assertEqual(self.client.get("/library/files/item", query_string={"id": "movies/nope"}).status_code, 302)
