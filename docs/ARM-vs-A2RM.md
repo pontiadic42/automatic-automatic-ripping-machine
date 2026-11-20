@@ -157,6 +157,15 @@ A2RM also carries fixes that other people offered to ARM and ARM hasn't merged y
   `title_t1` could be matched to `title_t10` (#1858); failed data and music rips counted as successes (#1872);
   dot-only titles could put a folder outside the library (#1860); TMDb and OMDb lookups had no timeout (#1857);
   `MAINFEATURE` picked an extra with more chapters than the film (#1875).
+- **Music CDs:** a rip stuck on a scratched CD is stopped after `MUSIC_STALL_TIMEOUT` seconds with no progress (#1910;
+  1800 by default, 0 = never); incomplete abcde rips fail instead of counting as done (#1855); MusicBrainz and Cover
+  Art lookups time out (#1880); track labels like `A1` (#1854) and CD stubs with no artist (#1844) no longer crash;
+  the front cover is used as the poster (#1879).
+- **Smaller:** early ripper messages reach `arm.log` (#1864); no Apprise error when nothing is set up (#1865); the log
+  viewer loads in pieces instead of an endless download (#1853); the test notification has the right address
+  (#1852); the container starts with a custom `ARM_GID` (#1881); SQLite waits 30 s for a lock and a retry keeps the
+  rest of the transaction (#1883); `APPRISE_URLS` sends to any other Apprise service (email, Signal, Home Assistant,
+  ...), hidden in logs (#1877).
 
 ## Outside services
 

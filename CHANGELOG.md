@@ -11,6 +11,9 @@ A2RM has no version numbers of its own yet; changes are listed by date. The Dock
   another website are refused. Ripping: apostrophes in labels, hybrid Blu-rays, one bad MakeMKV title, Abandon
   stopping HandBrake/ffmpeg, `t1`/`t10` file matching, failed data/music rips, dot-only titles, TMDb/OMDb timeouts,
   main-feature ranking. Details in [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md#fixes-to-arm-itself).
+- Also from ARM's open pull requests: music CDs (a rip stuck on a scratched CD is stopped, `MUSIC_STALL_TIMEOUT`;
+  incomplete rips fail; MusicBrainz timeouts and crashes; front cover as poster), the log viewer loads in pieces,
+  `APPRISE_URLS` for any other Apprise service, custom `ARM_GID` at start-up, and longer SQLite lock waits.
 
 ### 2026-11-18
 - **One page per job** (Identify, Files, Disc, Details) instead of separate title search, results, custom title and
