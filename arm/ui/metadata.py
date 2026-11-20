@@ -1,5 +1,6 @@
 """Main file for interacting with omdb and tmdb"""
 import urllib
+import urllib.parse
 import json
 import re
 import requests
@@ -10,6 +11,8 @@ import arm.config.config as cfg
 
 TMDB_YEAR_REGEX = r"-\d{0,2}-\d{0,2}"
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search"
+# Seconds before an OMDb/TMDB request is abandoned; identification continues without it.
+REQUEST_TIMEOUT = 30
 
 
 def _query_text(search_query):
@@ -26,7 +29,7 @@ def _tmdb_search_request(kind, search_query, tmdb_api_key, year=None):
     params = {"api_key": tmdb_api_key, "query": _query_text(search_query)}
     if year:
         params["year"] = year
-    return requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params)
+    return requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params, timeout=REQUEST_TIMEOUT)
 
 
 def call_omdb_api(title=None, year=None, imdb_id=None, plot="short", media_type=None):
@@ -61,7 +64,7 @@ def call_omdb_api(title=None, year=None, imdb_id=None, plot="short", media_type=
         app.logger.debug("no params")
     # connect to omdb and add background key
     try:
-        title_info_json = urllib.request.urlopen(str_url).read()
+        title_info_json = urllib.request.urlopen(str_url, timeout=REQUEST_TIMEOUT).read()
         title_info = json.loads(title_info_json.decode())
         title_info['background_url'] = None
         app.logger.debug(f"omdb - {title_info}")
@@ -94,7 +97,7 @@ def get_omdb_poster(title=None, year=None, imdb_id=None, plot="short"):
         app.logger.debug("no params")
         return None, None
     try:
-        title_info_json = urllib.request.urlopen(requests.utils.requote_uri(str_url)).read()
+        title_info_json = urllib.request.urlopen(requests.utils.requote_uri(str_url), timeout=REQUEST_TIMEOUT).read()
     except Exception as error:
         app.logger.debug(f"Failed to reach OMdb - {error}")
     else:
@@ -104,7 +107,8 @@ def get_omdb_poster(title=None, year=None, imdb_id=None, plot="short"):
             return title_info['Search'][0]['Poster'], title_info['Search'][0]['imdbID']
 
         try:
-            title_info_json2 = urllib.request.urlopen(requests.utils.requote_uri(str_url_2)).read()
+            title_info_json2 = urllib.request.urlopen(requests.utils.requote_uri(str_url_2),
+                                                      timeout=REQUEST_TIMEOUT).read()
             title_info2 = json.loads(title_info_json2.decode())
             # app.logger.debug("omdb - " + str(title_info2))
             if 'Error' not in title_info2:
@@ -211,7 +215,7 @@ def _tmdb_search_typed(search_query, year, media_type, tmdb_api_key):
         if year:
             # TMDb's TV search filters on the first air date, its movie search on any release year
             params["first_air_date_year" if kind == "tv" else "year"] = year
-        results = json.loads(requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params).text)
+        results = json.loads(requests.get(f"{TMDB_SEARCH_URL}/{kind}", params=params, timeout=REQUEST_TIMEOUT).text)
         if 'status_code' in results:
             app.logger.error(f"tmdb search failed with error - {results.get('status_message')}")
             continue
@@ -294,15 +298,15 @@ def tmdb_get_imdb(tmdb_id, media_type=None):
           f"append_to_response=alternative_titles,credits,images,keywords,releases,reviews,similar,videos,external_ids"
     url_tv = f"https://api.themoviedb.org/3/tv/{tmdb_id}/external_ids?api_key={tmdb_api_key}"
     if media_type == "series":
-        tv_json = json.loads(requests.get(url_tv).text)
+        tv_json = json.loads(requests.get(url_tv, timeout=REQUEST_TIMEOUT).text)
         return None if 'status_code' in tv_json else tv_json.get('imdb_id')
     # Making a get request
-    response = requests.get(url)
+    response = requests.get(url, timeout=REQUEST_TIMEOUT)
     search_results = json.loads(response.text)
     # 'status_code' means id wasn't found
     if 'status_code' in search_results:
         # Try tv series
-        response = requests.get(url_tv)
+        response = requests.get(url_tv, timeout=REQUEST_TIMEOUT)
         tv_json = json.loads(response.text)
         app.logger.debug(tv_json)
         if 'status_code' not in tv_json:
@@ -318,11 +322,13 @@ def tmdb_find(imdb_id):
     :return: dict in the standard 'arm' format
     """
     tmdb_api_key = cfg.arm_config['TMDB_API_KEY']
-    url = f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={tmdb_api_key}&external_source=imdb_id"
+    # The id comes from the job/web form; keep it a single path segment of the /find/ endpoint
+    find_id = urllib.parse.quote(str(imdb_id), safe="")
+    url = f"https://api.themoviedb.org/3/find/{find_id}?api_key={tmdb_api_key}&external_source=imdb_id"
     poster_size = "original"
     poster_base = f"https://image.tmdb.org/t/p/{poster_size}"
     # Making a get request
-    response = requests.get(url)
+    response = requests.get(url, timeout=REQUEST_TIMEOUT)
     search_results = json.loads(response.text)
     # app.logger.debug(f"tmdb_find = {search_results}")
     if len(search_results['movie_results']) > 0:

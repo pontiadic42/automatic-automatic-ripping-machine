@@ -85,17 +85,19 @@ def build_handbrake_command(srcpath, filepathname, hb_preset, hb_args, logfile,
         cmd += "--main-feature "
 
     if hb_preset:
-        cmd += f"--preset \"{hb_preset}\" "
+        cmd += f"--preset {shlex.quote(hb_preset)} "
 
     if track_number is not None:
-        cmd += f"-t {track_number} "
+        cmd += f"-t {shlex.quote(str(track_number))} "
 
     cmd += f"{hb_args} "
     # TRIM_TRACKS: keep only the chosen audio/subtitle languages (later options win in HandBrake)
     trim = automation_hooks.handbrake_args(None)
     if trim:
         cmd += " ".join(shlex.quote(arg) for arg in trim) + " "
-    cmd += f">> {logfile} 2>&1"
+    # hb_args is the operator's own HandBrake argument string; every path is quoted (upstream #1851:
+    # a title such as "Ocean's Eleven" puts a single quote into the log file name).
+    cmd += f">> {shlex.quote(str(logfile))} 2>&1"
 
     return cmd
 

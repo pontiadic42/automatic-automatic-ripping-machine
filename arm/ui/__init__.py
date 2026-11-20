@@ -39,9 +39,15 @@ dictConfig({
     },
 })
 
+# Imported after dictConfig, which would otherwise disable this module's logger
+from arm.ui.secret_key import load_secret_key  # noqa: E402
+from arm.ui import cross_site  # noqa: E402
+
 app = Flask(__name__)
 csrf = CSRFProtect()
 csrf.init_app(app)
+# Actions started from another website are refused (upstream issue #1868)
+app.before_request(cross_site.check_request)
 CORS(app, resources={r"/*": {"origins": "*", "send_wildcard": "False"}})
 
 login_manager = LoginManager()
@@ -53,14 +59,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Wait up to 15 s for SQLite's write lock instead of pysqlite's 5 s, so a short lock held by
 # another process (ripper or UI) delays a write instead of failing it
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 15}}
-# We should really generate a key for each system
-app.config['SECRET_KEY'] = "Big secret key"  # TODO: make this random!
+# Random per-install key, stored next to the database (or set ARM_SECRET_KEY) (upstream #1876)
+app.config['SECRET_KEY'] = load_secret_key(os.path.dirname(cfg.arm_config['DBFILE']))
 # Set the global Flask Login state, set to True will ignore any @login_required
 app.config['LOGIN_DISABLED'] = cfg.arm_config['DISABLE_LOGIN']
 app.logger.debug(f"Disable Login: {cfg.arm_config['DISABLE_LOGIN']}")
-# Set debug pin as it is hidden normally
-os.environ["WERKZEUG_DEBUG_PIN"] = "12345"  # make this random!
-app.logger.debug("Debugging pin: " + os.environ["WERKZEUG_DEBUG_PIN"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

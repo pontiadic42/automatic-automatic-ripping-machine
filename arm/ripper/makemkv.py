@@ -686,9 +686,10 @@ def makemkv_mkv(job, rawpath):
             logging.info(f"Main feature from title analysis: title {planned_main}")
             track = Track.query.filter_by(job_id=job.job_id, track_number=planned_main).first()
         else:
-            logging.info("Trying to find mainfeature (sorting by chapters desc, filesize desc, track_number asc)")
+            # Filesize first: extras can have more chapters than the film (upstream #1875)
+            logging.info("Trying to find mainfeature (sorting by filesize desc, chapters desc, track_number asc)")
             track = Track.query.filter_by(job_id=job.job_id).order_by(
-                Track.chapters.desc(), Track.filesize.desc(), Track.track_number.asc()).first()
+                Track.filesize.desc(), Track.chapters.desc(), Track.track_number.asc()).first()
         if track is None:
             raise utils.RipperException("MakeMKV found no titles to rip (MAINFEATURE is enabled)")
         rip_mainfeature(job, track, rawpath)
@@ -775,7 +776,7 @@ def makemkv(job):
             raise ValueError(message)
     logging.info(f"MakeMKV disc number: {job.drive.mdisc:d}")
     # get filesystem in order
-    rawpath = setup_rawpath(job, os.path.join(str(job.config.RAW_PATH), str(job.title)))
+    rawpath = setup_rawpath(job, utils.contained_path(str(job.config.RAW_PATH), str(job.title)))
     logging.info(f"Processing files to: {rawpath}")
     # Rip BluRay
     if (job.config.RIPMETHOD in ("backup", "backup_dvd")) and job.disctype == "bluray":
@@ -904,7 +905,7 @@ def setup_rawpath(job, raw_path):
             logging.error(err)
     else:
         logging.info(f"{raw_path} exists.  Adding timestamp.")
-        raw_path = os.path.join(str(job.config.RAW_PATH), f"{job.title}_{job.stage}")
+        raw_path = utils.contained_path(str(job.config.RAW_PATH), f"{job.title}_{job.stage}")
         logging.info(f"raw_path is {raw_path}")
         try:
             os.makedirs(raw_path)
@@ -1186,9 +1187,6 @@ class MakeMKVOutputChecker:
         """Dispatch processing based on message code."""
         code = self.data.code
 
-        if code == MessageID.RIP_TITLE_ERROR:
-            self.rip_title_error()
-
         if code == MessageID.RIP_COMPLETED:
             return self.zero_saved_files()
 
@@ -1218,14 +1216,6 @@ class MakeMKVOutputChecker:
             logging.critical(self.data.message)
             raise MakeMkvRuntimeError(1, ["RIP_COMPLETED"],
                                       output=f"{saved} titles were saved. See log for more details")
-
-    def rip_title_error(self):
-        """
-        If a single item fails, raise MakeMkvRuntimeError
-        """
-        logging.critical(self.data.message)
-        raise MakeMkvRuntimeError(1, ["RIP_TITLE_ERROR"],
-                                  output=self.data.message)
 
     def read_error(self):
         error_msg = self.data.sprintf[1]

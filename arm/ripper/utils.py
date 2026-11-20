@@ -56,6 +56,9 @@ class DuplicateRunException(DriveEmptyException):
     """
 
 
+UNSAFE_TITLE_FALLBACK = "Untitled-disc"
+
+
 def notify(job, title: str, body: str):
     """
     Send notifications with apprise\n
@@ -280,6 +283,23 @@ def _calculate_filename_similarity(expected_base, actual_base):
     return score
 
 
+def _different_number(expected_base, actual_base):
+    """Fuzzy spelling must preserve every numeric token, regardless of padding or stem length."""
+    expected_numbers = [int(number) for number in re.findall(r"[0-9]+", expected_base)]
+    actual_numbers = [int(number) for number in re.findall(r"[0-9]+", actual_base)]
+    return expected_numbers != actual_numbers
+
+
+def _matching_file_candidates(directory, expected_ext):
+    """Return files with the requested extension; a directory entry is never a candidate."""
+    candidates = []
+    for filename in os.listdir(directory):
+        base, ext = os.path.splitext(filename)
+        if ext.lower() == expected_ext.lower() and os.path.isfile(os.path.join(directory, filename)):
+            candidates.append((filename, base))
+    return candidates
+
+
 def find_matching_file(expected_file):
     """
     Find a file that matches the expected filename, handling minor naming discrepancies.
@@ -302,15 +322,9 @@ def find_matching_file(expected_file):
 
     # Get candidate files with same extension
     try:
-        files_in_dir = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        candidate_files = _matching_file_candidates(directory, expected_ext)
     except OSError:
         return expected_file
-
-    candidate_files = []
-    for file in files_in_dir:
-        base, ext = os.path.splitext(file)
-        if ext.lower() == expected_ext.lower():
-            candidate_files.append((file, base))
 
     if not candidate_files:
         return expected_file
@@ -320,6 +334,8 @@ def find_matching_file(expected_file):
     best_score = 0
 
     for file, base in candidate_files:
+        if _different_number(expected_base, base):
+            continue
         score = _calculate_filename_similarity(expected_base, base)
         if score > best_score:
             best_score = score
@@ -515,17 +531,17 @@ def rip_data(job):
     if file_label in (".", ".."):
         file_label = "data-disc"
     # get filesystem in order
-    raw_path = os.path.join(job.config.RAW_PATH, file_label)
+    raw_path = contained_path(job.config.RAW_PATH, file_label)
     final_path = os.path.join(job.config.COMPLETED_PATH, convert_job_type(job.video_type))
     final_file_name = file_label
 
     if (make_dir(raw_path)) is False:
         random_time = str(round(time.time() * 100))
-        raw_path = os.path.join(job.config.RAW_PATH, file_label + "_" + random_time)
+        raw_path = contained_path(job.config.RAW_PATH, file_label + "_" + random_time)
         final_file_name = f"{file_label}_{random_time}"
         make_dir(raw_path, False)
 
-    final_path = os.path.join(final_path, final_file_name)
+    final_path = contained_path(final_path, final_file_name)
     incomplete_filename = os.path.join(raw_path, file_label + ".part")
     make_dir(final_path)
     logging.info(f"Ripping data disc to: {incomplete_filename}")
@@ -833,7 +849,12 @@ def clean_for_filename(string, spaces=True):
     string = string.replace('&', 'and')
     string = string.replace("\\", " - ")
     string = re.sub(r'[^\w.() -]', '', string)
-    return re.sub(' +', ' ', string).strip()
+    string = re.sub(' +', ' ', string).strip()
+    # "." / ".." (or nothing at all) would address the parent or the base folder
+    # itself when joined under RAW_PATH/COMPLETED_PATH; never use them as a name (upstream #1860).
+    if not string.strip(". "):
+        return UNSAFE_TITLE_FALLBACK
+    return string
 
 
 @contextlib.contextmanager
@@ -857,6 +878,23 @@ def device_lock(dev_path, timeout=120):
             yield
         finally:
             fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def contained_path(base, *parts):
+    """Join folder names under base, refusing any that would escape it or alias it.
+
+    Returns the same unresolved string os.path.join would, after checking that
+    no component is dot-only/empty and that the resolved target stays strictly
+    below the resolved base.
+    """
+    for part in parts:
+        if not str(part).strip(". "):
+            raise RipperException(f"Refusing unsafe output folder name {str(part)!r}")
+    root = Path(str(base)).resolve()
+    target = root.joinpath(*(str(part) for part in parts)).resolve()
+    if target == root or not target.is_relative_to(root):
+        raise RipperException("Refusing an output folder outside its configured root")
+    return os.path.join(str(base), *(str(part) for part in parts))
 
 
 def duplicate_run_check(dev_path):

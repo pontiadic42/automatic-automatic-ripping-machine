@@ -164,7 +164,7 @@ class TestTitleSearchTypes(unittest.TestCase):
                                                "first_air_date": "2005-03-26", "backdrop_path": None,
                                                "overview": ""}]}
 
-        def fake_get(url, params=None):
+        def fake_get(url, params=None, timeout=None):
             return self.response(tv if url.endswith("/tv") else movie)
 
         with patch.dict(cfg.arm_config, {"TMDB_API_KEY": "k"}), \

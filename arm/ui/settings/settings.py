@@ -354,6 +354,7 @@ def server_info():
 
 
 @route_settings.route('/systemdrivescan')
+@login_required
 def system_drive_scan():
     """
     Page - systemdrivescan
@@ -467,6 +468,7 @@ def testapprise():
 
 
 @route_settings.route('/updatesysinfo')
+@login_required
 def update_sysinfo():
     """
     Update system information
