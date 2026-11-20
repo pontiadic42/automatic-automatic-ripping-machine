@@ -11,12 +11,24 @@
         editor.querySelectorAll(".lib-tv").forEach(function (el) {
             el.style.display = kind.value === "series" ? "" : "none";
         });
+        // C40: edition labels are for movies only
+        editor.querySelectorAll(".lib-movie").forEach(function (el) {
+            el.style.display = kind.value === "series" ? "none" : "";
+        });
+    }
+
+    function showEditionText(choice) {
+        const text = choice.parentNode.querySelector(".lib-edition-text");
+        if (!text) { return; }
+        text.style.display = choice.value === "other" ? "" : "none";
+        if (choice.value === "other") { text.focus(); }
     }
 
     function initAll() { document.querySelectorAll(".arm-lib-editor").forEach(showTv); }
 
     document.addEventListener("change", function (event) {
         if (event.target.classList.contains("lib-kind")) { showTv(event.target.closest(".arm-lib-editor")); }
+        if (event.target.classList.contains("lib-edition-choice")) { showEditionText(event.target); }
     });
 
     document.addEventListener("click", function (event) {

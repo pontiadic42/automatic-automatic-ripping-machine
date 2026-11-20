@@ -40,18 +40,31 @@
         <div class="arm-lib-block">
             <h3 class="arm-auto-h">Files</h3>
             <table class="arm-lib-table">
-                <thead><tr><th>File</th><th>Size</th><th>Is</th></tr></thead>
+                <thead><tr><th>File</th><th>Size</th><th>Length</th><th>Is</th><th class="lib-movie">Label</th></tr></thead>
                 <tbody>
                 {% for f in files %}
+                    {% set preset = f.edition if f.edition in editions else ("other" if f.edition else "") %}
                     <tr><td style="word-break:break-all">{{ f.rel }}<input type="hidden" name="file_{{ loop.index0 }}" value="{{ f.rel }}"></td>
                         <td style="white-space:nowrap">{{ f.size }}</td>
-                        <td><select name="role_{{ loop.index0 }}">
+                        <td style="white-space:nowrap">{{ f.length }}</td>
+                        <td><select name="role_{{ loop.index0 }}" class="lib-role">
                             {% for role, label in [("main", "Main movie"), ("version", "Other version"), ("episode", "Episode"), ("extra", "Extra (to extras/)"), ("keep", "Keep its name")] %}
-                                <option value="{{ role }}" {{ "selected" if f.role == role }}>{{ label }}</option>{% endfor %}</select></td></tr>
+                                <option value="{{ role }}" {{ "selected" if f.role == role }}>{{ label }}</option>{% endfor %}</select></td>
+                        <td class="lib-movie"><span class="lib-edition">
+                            <select name="edition_{{ loop.index0 }}" class="lib-edition-choice" aria-label="Label for {{ f.rel }}">
+                                <option value="" {{ "selected" if not preset }}>No label</option>
+                                {% for e in editions %}<option value="{{ e }}" {{ "selected" if preset == e }}>{{ e }}</option>{% endfor %}
+                                <option value="other" {{ "selected" if preset == "other" }}>Other…</option>
+                            </select>
+                            <input type="text" name="edition_text_{{ loop.index0 }}" class="lib-edition-text" maxlength="40"
+                                   value="{{ f.edition if preset == 'other' else '' }}" placeholder="Type a label"
+                                   style="{{ '' if preset == 'other' else 'display:none' }}">
+                        </span></td></tr>
                 {% endfor %}
                 </tbody>
             </table>
             <p class="arm-muted" style="font-size:13px">Subtitles and pictures named after a video move with it. Other files keep their place in the folder.</p>
+            <p class="arm-muted lib-movie" style="font-size:13px">A label goes at the end of the movie's file name, e.g. "Title (Year) - Extended cut", so Jellyfin shows the files as versions of one movie. It's used for the main movie and other versions. An other version with no label keeps the label in its name (or "Version 2").</p>
         </div>
 
         {% if preview %}

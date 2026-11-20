@@ -11,7 +11,7 @@ import os
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
-from arm.automation import library
+from arm.automation import library, organize
 
 route_library_files = Blueprint('route_library_files', __name__, template_folder='templates',
                                 static_folder='../static')
@@ -67,6 +67,24 @@ def _form_values():
             "first_episode": form.get("first_episode", "")}
 
 
+def _form_editions():
+    """{file: label} from the label drop-down, or the typed text when it says Other (C40)"""
+    editions = {}
+    for key, value in request.form.items():
+        if key.startswith("file_"):
+            index = key[5:]
+            choice = request.form.get("edition_" + index, "")
+            editions[value] = request.form.get("edition_text_" + index, "") if choice == "other" else choice
+    return editions
+
+
+def length_text(seconds):
+    if not seconds:
+        return ""
+    seconds = int(round(seconds))
+    return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+
+
 def _form_roles():
     roles = {}
     for key, value in request.form.items():
@@ -75,18 +93,23 @@ def _form_roles():
     return roles
 
 
-def editor_context(item_id, found=None, values=None, roles=None, preview=None, error=None):
+def editor_context(item_id, found=None, values=None, roles=None, preview=None, error=None, editions=None):
     """What library_editor.html needs for one item (used here and on the job page's Files section)"""
     found = found or library.find(item_id)
     values = values or library.defaults(found)
     roles = roles or library.default_roles(found["id"], values.get("kind") or "movie")
     base = library.absolute(found["id"])
     base = base if os.path.isdir(base) else os.path.dirname(base)
-    file_list = [{"rel": rel, "role": role, "size": size_text(max(0, library._size(os.path.join(base, rel))))}
+    editions = library.current_editions(found["id"], roles) if editions is None else editions
+    file_list = [{"rel": rel, "role": role, "size": size_text(max(0, library._size(os.path.join(base, rel)))),
+                  "edition": editions.get(rel, ""),
+                  # lengths tell the cuts apart; ffprobe only for the main movie and its versions
+                  "length": length_text(organize.duration_seconds(os.path.join(base, rel)))
+                  if role in ("main", "version") else ""}
                  for rel, role in sorted(roles.items(), key=lambda pair: library._episode_order(pair[0]))]
     others = library.same_title(found, (library.store.load_state().get("library") or {}).get("items", []))
     return {"item": found, "v": values, "files": file_list, "preview": preview, "others": others,
-            "size_text": size_text, "roles": library.ROLES, "error": error}
+            "size_text": size_text, "roles": library.ROLES, "error": error, "editions": library.EDITIONS}
 
 
 def _job_files(job_id):
@@ -112,10 +135,10 @@ def item():
         return redirect(_job_files(found["job_id"]))
     done = (_job_files(found["job_id"]) if request.values.get("back") and found.get("job_id")
             else url_for("route_library_files.files"))
-    values, roles, preview, error = None, None, None, None
+    values, roles, preview, error, editions = None, None, None, None, None
     if request.method == "POST":
         action = request.form.get("action")
-        values, roles = _form_values(), _form_roles()
+        values, roles, editions = _form_values(), _form_roles(), _form_editions()
         try:
             if action in ("apply", "trash") and _active_job():
                 raise library.LibraryError("A disc is ripping or transcoding; try again when it's done.")
@@ -124,18 +147,19 @@ def item():
                 flash(f"Moved {found['id']} to the trash. Undo it from the list of changes.", "success")
                 return redirect(url_for("route_library_files.files"))
             if action == "apply":
-                entry = library.apply(found["id"], values, roles)
+                entry = library.apply(found["id"], values, roles, editions)
                 flash(f"Done: {entry['summary']} ({len(entry['moves'])} file(s) moved"
                       + (f", {len(entry['left'])} already there left in place" if entry["left"] else "")
                       + "). Undo it from Library > Files.", "success")
                 return redirect(done)
-            preview = library.plan(found["id"], values, roles)
-            roles = preview["roles"]
+            preview = library.plan(found["id"], values, roles, editions)
+            roles, editions = preview["roles"], preview["editions"]
         except library.LibraryError as err:
             error = str(err)
             if not partial:
                 flash(error, "danger")
-    context = editor_context(found["id"], found, values, roles, preview, error)
+    context = editor_context(found["id"], found, values, roles, preview, error,
+                             None if editions is None else library.clean_editions(editions))
     if partial:
         return render_template("library_editor.html", back=request.values.get("back", ""), **context)
     return render_template("library_item.html", back="", **context)

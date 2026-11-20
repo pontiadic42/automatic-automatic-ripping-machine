@@ -38,6 +38,10 @@ RAW_NAME = re.compile(r"(?:^|_)t\d{2,3}\.[A-Za-z0-9]+$")
 TID = re.compile(r"_t(\d{2,3})\.[A-Za-z0-9]+$")
 EPISODE_NAME = re.compile(r"S(\d{1,2})E(\d{1,3})", re.IGNORECASE)
 ROLES = ("main", "version", "episode", "extra", "keep")
+# Labels offered for a movie file (C40). A label fills {Edition}: "Fast Five (2011) - Extended cut.mkv", the form
+# Jellyfin shows as versions of one movie.
+EDITIONS = ("Theatrical", "Extended cut", "Director's cut", "Unrated", "Special edition", "Remastered", "IMAX")
+EDITION_MAX = 40
 INFO_ONLY = {"untracked"}  # worth a filter, but a well-named folder A2RM didn't make is fine
 SIDE_FILES = (".nfo", ".srt", ".ass", ".sub", ".idx", ".jpg", ".png")
 
@@ -401,11 +405,13 @@ def _clean_values(values):
     return {"kind": kind, "title": title, "year": year, "imdb_id": imdb_id, "season": season, "first_episode": first}
 
 
-def plan(item_id, values, roles=None):
+def plan(item_id, values, roles=None, editions=None):
     """
     What renaming/moving this item would do.
     :param values: kind (movie|series), title, year, imdb_id, season, first_episode (TV)
     :param roles: {file relative to the item: main|version|episode|extra|keep}
+    :param editions: {file relative to the item: label} for movie files (C40); no label = main gets none,
+        another version keeps the one in its name (or "Version N")
     :return: {"item", "target", "moves": [{"from", "to", "role"}], "same": [...], "notes": [...]}
     """
     from arm.automation import naming
@@ -423,8 +429,10 @@ def plan(item_id, values, roles=None):
     old_stem = os.path.splitext(os.path.basename(source))[0] if os.path.isfile(source) else os.path.basename(source)
     old_stem = COPY_SUFFIX.sub("", old_stem)
     if values["kind"] == "movie":
-        names = _movie_names(videos, roles, job, old_stem, naming)
+        editions = clean_editions(editions)
+        names = _movie_names(videos, roles, job, old_stem, naming, editions)
     else:
+        editions = {}
         names = _tv_names(videos, roles, job, values, naming)
     notes = []
     if values["kind"] == "series" and values["season"] is None and any(r == "episode" for r in roles.values()):
@@ -440,7 +448,8 @@ def plan(item_id, values, roles=None):
             _add_move(side, side_target, "with " + os.path.basename(rel), moves, same, taken)
     if os.path.isdir(source):
         _other_files(source, target_dir, (moves, same, drop, notes, taken))
-    return {"item": item_id.strip("/"), "values": values, "roles": roles, "target": relative(target_dir),
+    return {"item": item_id.strip("/"), "values": values, "roles": roles, "editions": editions,
+            "target": relative(target_dir),
             "moves": moves, "same": same, "drop": drop, "notes": notes}
 
 
@@ -466,19 +475,47 @@ def _other_files(source, target_dir, lists):
             _add_move(full, target, "other file", moves, same, taken)
 
 
-def _movie_names(videos, roles, job, old_stem, naming):
-    names = {}
+def _movie_names(videos, roles, job, old_stem, naming, editions=None):
+    names, editions = {}, editions or {}
     extras = str(cfg.arm_config.get("EXTRAS_SUB") or "extras")
     for rel in videos:
         role, name = roles.get(rel, "keep"), os.path.basename(rel)
         ext = os.path.splitext(name)[1]
+        label = editions.get(rel)
         if role == "main":
-            names[rel] = naming.movie_name(job) + ext
+            names[rel] = naming.movie_name(job, label or "") + ext
         elif role == "version":
-            names[rel] = naming.movie_name(job, _edition(os.path.splitext(name)[0], old_stem, name)) + ext
+            names[rel] = naming.movie_name(job, label or _edition(os.path.splitext(name)[0], old_stem, name)) + ext
         elif role == "extra":
             names[rel] = f"{extras}/{name}"
     return names
+
+
+def clean_editions(editions):
+    """{file: label} with empty labels dropped and each label made safe for a file name"""
+    clean = {}
+    for rel, label in (editions or {}).items():
+        label = re.sub(r'[\\/:*?"<>|]+', " ", str(label or ""))
+        label = re.sub(r"\s+", " ", label).strip(" .-")[:EDITION_MAX].strip()
+        if label:
+            clean[rel] = label
+    return clean
+
+
+def current_editions(item_id, roles):
+    """{file: label already in its name} for the main movie and other versions, to start the form with"""
+    source = absolute(item_id)
+    old_stem = os.path.splitext(os.path.basename(source))[0] if os.path.isfile(source) else os.path.basename(source)
+    old_stem = COPY_SUFFIX.sub("", old_stem)
+    labels = {}
+    for rel, role in roles.items():
+        if role not in ("main", "version"):
+            continue
+        stem = os.path.splitext(os.path.basename(rel))[0]
+        label = _edition(stem, old_stem, os.path.basename(rel))
+        if label != stem and not TID.search(os.path.basename(rel)):
+            labels[rel] = label
+    return labels
 
 
 def _edition(stem, old_stem, name):
@@ -546,9 +583,9 @@ def _add_move(source, target, role, moves, same, taken):
 
 # ---------------------------------------------------------------- apply / trash / undo
 
-def apply(item_id, values, roles=None):
+def apply(item_id, values, roles=None, editions=None):
     """Do the plan (worked out again here, not trusted from the page). Returns the log entry."""
-    result = plan(item_id, values, roles)
+    result = plan(item_id, values, roles, editions)
     if not result["moves"]:
         raise LibraryError("Nothing to change: the names are already right.")
     source = absolute(item_id)
