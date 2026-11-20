@@ -146,6 +146,18 @@ A2RM also fixes bugs in ARM 2.24.4. Most were offered to ARM as pull requests
 - MusicBrainz and data-disc edge cases; unlabelled Blu-rays; a disc-ID lookup with no timeout.
 - Phantom drives shown when no drive is passed into the container.
 
+A2RM also carries fixes that other people offered to ARM and ARM hasn't merged yet (copied 2026-11-19):
+
+- **Security:** a random login key per install instead of the fixed one in ARM's code (#1876; set `ARM_SECRET_KEY`
+  to choose your own); messages at the top of a page are escaped (#1869); drive scan, system info and database
+  update need a login (#1870); and, new in A2RM, an action started from another website (delete, abandon, eject,
+  settings) is refused, which matters most with `DISABLE_LOGIN` on (ARM issue #1868).
+- **Ripping:** labels with an apostrophe broke HandBrake (#1851); hybrid Blu-rays ripped as DVDs (#1850); one
+  unreadable MakeMKV title failed the whole job (#1845); Abandon left HandBrake and ffmpeg running (#1878);
+  `title_t1` could be matched to `title_t10` (#1858); failed data and music rips counted as successes (#1872);
+  dot-only titles could put a folder outside the library (#1860); TMDb and OMDb lookups had no timeout (#1857);
+  `MAINFEATURE` picked an extra with more chapters than the film (#1875).
+
 ## Outside services
 
 | Service | ARM | A2RM |

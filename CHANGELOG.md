@@ -5,6 +5,13 @@
 A2RM has no version numbers of its own yet; changes are listed by date. The Docker image still reports ARM's version
 (`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
 
+### 2026-11-19
+- **Fixes from ARM's open pull requests** (not merged by ARM yet): random login key per install (`ARM_SECRET_KEY` to
+  set your own), escaped page messages, login on drive scan / system info / database update, and actions started from
+  another website are refused. Ripping: apostrophes in labels, hybrid Blu-rays, one bad MakeMKV title, Abandon
+  stopping HandBrake/ffmpeg, `t1`/`t10` file matching, failed data/music rips, dot-only titles, TMDb/OMDb timeouts,
+  main-feature ranking. Details in [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md#fixes-to-arm-itself).
+
 ### 2026-11-18
 - **One page per job** (Identify, Files, Disc, Details) instead of separate title search, results, custom title and
   rip-settings pages; TMDb results as a grid of large posters; the file editor is on the job page. **Library** and

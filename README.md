@@ -106,7 +106,9 @@ A2RM setting with its default.
 A2RM also carries a set of bug fixes to ARM 2.24.4: wrong titles from disc labels, crashes in identification,
 notifications for empty drives, stale drive locks, abandoned jobs that kept MakeMKV running, config file rewrites,
 secrets in logs, database locks while ripping, double runs for one disc, slow drive spin-up, and more. Most of these
-were also offered to ARM as pull requests.
+were also offered to ARM as pull requests. A2RM also carries security and ripping fixes that other people offered to ARM
+and ARM hasn't merged yet, including a per-install login key (set `ARM_SECRET_KEY` to choose it) and refusing actions
+started from another website.
 
 ## Configuration
 
