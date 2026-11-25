@@ -14,7 +14,6 @@ then open http://<host>:8095. DEMO_URL is the address your browser uses (search-
 full http address). See README.md next to this file for the screenshots taken from it.
 """
 import datetime
-import json
 import os
 import re
 import shutil
@@ -68,7 +67,8 @@ def write_config():
         "TRANSCODE_PATH": f"{ROOT}/media/transcode/", "COMPLETED_PATH": f"{ROOT}/media/completed/",
         "DISABLE_LOGIN": "true", "WEBSERVER_PORT": str(PORT), "TMDB_API_KEY": "demo", "METADATA_PROVIDER": "tmdb",
         "NTFY_SERVER": "https://ntfy.example.com", "NTFY_TOPIC": "demo", "JELLYFIN_URL": "http://jellyfin.example:8096",
-        "JELLYFIN_API_KEY": "demo", "DISCDB_LOOKUP": "true", "HB_ARGS_DVD": "--subtitle scan -F -e qsv_h264 --encoder-preset speed",
+        "JELLYFIN_API_KEY": "demo", "DISCDB_LOOKUP": "true",
+        "HB_ARGS_DVD": "--subtitle scan -F -e qsv_h264 --encoder-preset speed",
         "HB_ARGS_BD": "--subtitle scan -F -e qsv_h265 --encoder-preset speed",
     }
     for key, value in values.items():
@@ -102,7 +102,8 @@ def poster(title, year, colours):
         text.append(f"drawtext=fontfile={FONT}:text='{line}':fontcolor=white:fontsize=38:x=(w-text_w)/2:y={y}:"
                     "shadowcolor=black@0.5:shadowx=2:shadowy=2")
     text.append(f"drawtext=fontfile={FONT_LIGHT}:text='{year}':fontcolor=white@0.85:fontsize=22:x=(w-text_w)/2:y=440")
-    run("ffmpeg", "-y", "-f", "lavfi", "-i", f"gradients=s=342x513:c0={colours[0]}:c1={colours[1]}:x0=0:y0=0:x1=342:y1=513",
+    gradient = f"gradients=s=342x513:c0={colours[0]}:c1={colours[1]}:x0=0:y0=0:x1=342:y1=513"
+    run("ffmpeg", "-y", "-f", "lavfi", "-i", gradient,
         "-vf", ",".join(text), "-frames:v", "1", path)
     return f"/static/demo/posters/{slug(title)}.png"
 
@@ -190,17 +191,21 @@ def seed():
                       disctype="dvd" if days % 2 else "bluray")
             store.update_job(row.job_id, confidence={"score": 88 + days % 10, "level": "high", "confirmed": False,
                                                      "reasons": ["The disc label matches the title",
-                                                                 "The main title is within 2 minutes of TMDb's runtime"]},
+                                                                 "The main title is within 2 minutes of "
+                                                                 "TMDb's runtime"]},
                              encoder={"label": "QSV H.264 (GPU)", "gpu": True, "all_gpu": True, "fps": 980.0})
         failed = job("Copper Kettle Christmas", "fail", 3, "COPPER_KETTLE", disctype="dvd",
-                     errors="MakeMKV couldn't read title 2 (read error at sector 1,204,881). Clean the disc or try the other drive.")
+                     errors="MakeMKV couldn't read title 2 (read error at sector 1,204,881). "
+                            "Clean the disc or try the other drive.")
         store.update_job(failed.job_id, attention=[{"kind": "failed", "level": "bad",
-                                                    "message": "MakeMKV couldn't read the disc: clean it or try the other drive."}])
+                                                    "message": "MakeMKV couldn't read the disc: "
+                                                               "clean it or try the other drive."}])
 
         # The TV show: Season 2, four episodes
         tv = f"{completed}tv/Starfield Station (2015)"
         for number in range(1, 5):
-            video(f"{tv}/Season 02/Starfield Station S02E0{number}.mkv", 2580 + number * 30, colours["Starfield Station"])
+            video(f"{tv}/Season 02/Starfield Station S02E0{number}.mkv", 2580 + number * 30,
+                  colours["Starfield Station"])
         row = job("Starfield Station", "success", 2, "STARFIELD_STATION_S2_D1", kind="series", path=tv, disctype="dvd",
                   device="/dev/sr0")
         store.update_job(row.job_id, tv_season={"season": 2, "first_episode": 1},
@@ -221,11 +226,13 @@ def seed():
 
         # Copper Valley: two cuts, stills, title analysis: the job page in the screenshots
         valley = f"{completed}movies/Copper Valley (2016)"
-        cuts = [("Copper Valley (2016) - Theatrical.mkv", 6834, 0), ("Copper Valley (2016) - Extended cut.mkv", 7512, 1)]
+        cuts = [("Copper Valley (2016) - Theatrical.mkv", 6834, 0),
+                ("Copper Valley (2016) - Extended cut.mkv", 7512, 1)]
         for name, seconds, _tid in cuts:
             video(f"{valley}/{name}", seconds, colours["Copper Valley"], label="COPPER VALLEY")
         for number, seconds in enumerate((312, 248, 1290), start=1):
-            video(f"{valley}/extras/Copper Valley - Extra {number}.mkv", seconds, ("0x333333", "0x777777"), gb=seconds / 2000)
+            video(f"{valley}/extras/Copper Valley - Extra {number}.mkv", seconds, ("0x333333", "0x777777"),
+                  gb=seconds / 2000)
         row = job("Copper Valley", "success", 0, "COPPER_VALLEY_EXT", path=valley)
         titles = [
             {"tid": 0, "role": "main", "rip": True, "outcome": "ripped", "minutes": 113.9, "seconds": 6834,
@@ -285,7 +292,8 @@ def seed():
 
 # ---------------------------------------------------------------- outside services replaced with demo values
 
-SEARCH = [("Copper Valley", "2016", "movie"), ("Valley of Copper", "1987", "movie"), ("Copperhead Run", "2013", "movie"),
+SEARCH = [("Copper Valley", "2016", "movie"), ("Valley of Copper", "1987", "movie"),
+          ("Copperhead Run", "2013", "movie"),
           ("Copper Kettle Christmas", "2019", "movie"), ("Copper Valley Chronicles", "2022", "series"),
           ("The Copper Road", "2004", "movie")]
 
