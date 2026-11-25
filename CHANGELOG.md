@@ -5,6 +5,12 @@
 A2RM has no version numbers of its own yet; changes are listed by date. The Docker image still reports ARM's version
 (`VERSION`, 2.24.4). See [docs/ARM-vs-A2RM.md](docs/ARM-vs-A2RM.md) for the full picture.
 
+### 2026-11-25
+- **Screenshots** on the README and the ARM vs A2RM page.
+- Fixes found while taking them: job page labels, A2RM's tables stacked by ARM's mobile table style, the health
+  check reading the trash, episode numbers guessed from a box-set disc number, and code text shown as black boxes
+  in light mode.
+
 ### 2026-11-19
 - **Edition labels** in the file editor (job page > Files, Library > Files): pick Theatrical, Extended cut,
   Director's cut, ... or type one for each movie file; Apply names it `Title (Year) - Extended cut.mkv` so Jellyfin
