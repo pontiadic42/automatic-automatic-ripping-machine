@@ -14,29 +14,6 @@ don't report A2RM problems to them.
 titles get ripped, names, checks, housekeeping, web UI, Docker image, bug fixes, outside services) and lists every
 A2RM setting with its default.
 
-## Screenshots
-
-<table>
-  <tr>
-    <td width="50%"><a href="docs/images/home.webp"><img src="docs/images/home.webp" alt="Home page: two drive bays, banners for jobs that need you, and posters of recently finished rips"></a><br><b>Home:</b> drive bays, what needs you, recent rips</td>
-    <td width="50%"><a href="docs/images/job-identify.webp"><img src="docs/images/job-identify.webp" alt="A job page: poster, confidence score and the Identify section with a grid of TMDb search results"></a><br><b>Job page:</b> confidence score and TMDb search with large posters</td>
-  </tr>
-  <tr>
-    <td><a href="docs/images/job-files.webp"><img src="docs/images/job-files.webp" alt="The job page's Files section: each file with its size, length, role and an edition label such as Theatrical or Extended cut"></a><br><b>Files:</b> rename, move and label cuts, with a preview first</td>
-    <td><a href="docs/images/library-titles.webp"><img src="docs/images/library-titles.webp" alt="Library > Titles: poster tiles for every job with filters for movies, TV, unidentified and failed"></a><br><b>Library:</b> every rip, with filters</td>
-  </tr>
-  <tr>
-    <td><a href="docs/images/library-files.webp"><img src="docs/images/library-files.webp" alt="Library > Files: every folder in the library with what looks wrong, such as copy folders, loose files and duplicate titles"></a><br><b>Library > Files:</b> finds what needs tidying, including files A2RM didn't make</td>
-    <td><a href="docs/images/library-health.webp"><img src="docs/images/library-health.webp" alt="Library > Health: results of the weekly read-only check, listing probable duplicates"></a><br><b>Library > Health:</b> weekly read-only check of every file</td>
-  </tr>
-  <tr>
-    <td><a href="docs/images/settings-a2rm.webp"><img src="docs/images/settings-a2rm.webp" alt="Settings > A2RM: settings grouped by topic, each with a plain-language description"></a><br><b>Settings:</b> one page with tabs; every setting explained</td>
-    <td><a href="docs/images/settings-hardware.webp"><img src="docs/images/settings-hardware.webp" alt="Settings > Hardware: a passed Intel QuickSync test encode, the GPU and permissions, and encoder suggestions"></a><br><b>Hardware:</b> a real GPU test encode, not HandBrake's guess</td>
-  </tr>
-</table>
-
-<p align="center"><a href="docs/images/phone-job.webp"><img src="docs/images/phone-job.webp" width="260" alt="The job page on a phone, with the navigation bar at the bottom"></a><br><b>On a phone</b></p>
-
 ## What A2RM adds to ARM
 
 ### Identification
