@@ -29,6 +29,8 @@ Moving back to ARM: point an ARM 2.24.4 image at the same volumes. ARM ignores A
 
 ## Identification
 
+![A job page: confidence score and TMDb search results as large posters](images/job-identify.webp)
+
 
 | | ARM | A2RM |
 |---|---|---|
@@ -62,6 +64,8 @@ A2RM reads MakeMKV's title information first (`TITLE_ANALYSIS`) and classes each
 
 ## Names and folders
 
+![The Files section: size, length, role and edition label for each file](images/job-files.webp)
+
 
 | | ARM | A2RM |
 |---|---|---|
@@ -72,6 +76,8 @@ A2RM reads MakeMKV's title information first (`TITLE_ANALYSIS`) and classes each
 | Changing a title later | Updates the database only | Moves and renames the files to match (including `unidentified` → `movies`/`tv`) |
 
 ## Checks and safety nets (all A2RM)
+
+![Settings > Hardware: a real QuickSync test encode and the GPU check](images/settings-hardware.webp)
 
 
 - **Disk space** before ripping (`MIN_FREE_GB_DVD`, `MIN_FREE_GB_BLURAY`, `DISK_SPACE_ACTION`).
@@ -87,6 +93,8 @@ A2RM reads MakeMKV's title information first (`TITLE_ANALYSIS`) and classes each
 
 ## Housekeeping (all A2RM)
 
+![Library > Health: the weekly read-only check](images/library-health.webp)
+
 
 Runs from one scheduled command (`python3 -m arm.automation.maintenance tick`, e.g. every 5 minutes from the host's cron):
 
@@ -98,6 +106,8 @@ Runs from one scheduled command (`python3 -m arm.automation.maintenance tick`, e
 - **Jellyfin**: scans the new folder right away and checks it matched the same film or show (`JELLYFIN_*`).
 
 ## Library management (all A2RM)
+
+![Library > Files: folders that need tidying, with what looks wrong](images/library-files.webp)
 
 
 **Library > Files** (and the Files section of each job's page) works on everything in `movies/`, `tv/` and `unidentified/`, including files A2RM (or
@@ -121,6 +131,8 @@ only. A2RM keeps those and adds [ntfy](https://ntfy.sh) phone notifications **wi
 (`ARM_PHONE_URL`), so they work without logging in but can't be forged.
 
 ## Web UI
+
+![Home: drive bays, banners and recent rips](images/home.webp)
 
 
 | ARM | A2RM |
@@ -196,6 +208,7 @@ Nothing else leaves your network. Title-card OCR runs locally.
 ## Every A2RM setting
 
 ![Settings > A2RM: settings grouped by topic with descriptions](images/settings-a2rm.webp)
+
 
 All in `arm.yaml`, added on first start, and in the web UI under **Settings** (the A2RM, Notifications and Hardware tabs). Defaults in brackets.
 
