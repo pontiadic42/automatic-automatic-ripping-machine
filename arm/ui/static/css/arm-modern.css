@@ -292,6 +292,8 @@ html .bg-light, html[data-theme="dark"] .bg-light { background: var(--arm-surfac
 .arm-auto-files { font-size: 12px; padding-left: 18px; }
 .arm-auto-version { border: 1px solid var(--arm-border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .arm-auto-version-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+/* File paths and setting names: a light chip that follows the theme (C45; was Bootstrap pink or, by mistake, always dark) */
+code { color: var(--arm-text); background: var(--arm-bg); border: 1px solid var(--arm-border); border-radius: 4px; padding: 0 4px; font-size: .88em; }
 .arm-auto-version-head code { word-break: break-all; }
 .arm-auto-version .arm-auto-frames { margin-bottom: 6px; }
 .arm-auto-version-facts { font-size: 12px; margin: 0; }

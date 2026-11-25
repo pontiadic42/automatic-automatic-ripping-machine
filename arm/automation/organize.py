@@ -122,6 +122,23 @@ def match_episodes(job, episodes):
     return _discdb_numbers(job, episodes) or _match_tmdb_episodes(job, episodes)
 
 
+def _first_episode(key, disc, chosen, label_season, count):
+    """The episode number of the disc's first episode title, or None when it can't be known"""
+    progress = store.load_state().get("tv_progress", {})
+    if chosen and chosen.get("first_episode"):
+        return chosen["first_episode"]
+    if disc in (None, 1) and not (disc is None and key in progress):
+        return 1
+    if key in progress:
+        return progress[key]
+    if label_season is None and chosen:
+        # You picked the season, but the label has a disc number and no season (a box set:
+        # "COMPLETE_SERIES_D24"), so the number counts across the whole set, not within this
+        # season. Don't guess (C45: D24 became episode 116).
+        return None
+    return (disc - 1) * count + 1
+
+
 def _match_tmdb_episodes(job, episodes):
     """Number the episode titles (sorted by title number) using TMDb's episode runtimes"""
     from arm.automation import tmdb
@@ -132,6 +149,7 @@ def _match_tmdb_episodes(job, episodes):
         return {}, "The show isn't identified on TMDb"
     tv_id = found[1]
     season, disc = season_and_disc(job.label, job.title_manual or job.title)
+    label_season = season
     chosen = chosen_season(job)
     if chosen:
         season = chosen["season"]
@@ -146,16 +164,10 @@ def _match_tmdb_episodes(job, episodes):
     tmdb_episodes = sorted(data.get("episodes") or [], key=lambda e: e.get("episode_number") or 0)
     if not tmdb_episodes:
         return {}, f"TMDb has no episodes for season {season}"
-    key = f"tv:{tv_id}:{season}"
-    progress = store.load_state().get("tv_progress", {})
-    if chosen and chosen.get("first_episode"):
-        start = chosen["first_episode"]
-    elif disc in (None, 1) and not (disc is None and key in progress):
-        start = 1
-    elif key in progress:
-        start = progress[key]
-    else:
-        start = (disc - 1) * len(episodes) + 1
+    start = _first_episode(f"tv:{tv_id}:{season}", disc, chosen, label_season, len(episodes))
+    if start is None:
+        return {}, (f"Disc {disc} of a set, but the label doesn't say which disc of season {season} it is. "
+                    "Pick the first episode on this disc on the job page")
     runtimes = {e["episode_number"]: e.get("runtime") for e in tmdb_episodes}
     numbers = {}
     checked = matched = 0
@@ -171,7 +183,8 @@ def _match_tmdb_episodes(job, episodes):
                 matched += 1
     if checked and matched / checked < 0.6:
         return {}, f"Title lengths don't line up with season {season}'s episodes from episode {start}"
-    progress[key] = start + len(episodes)
+    progress = store.load_state().get("tv_progress", {})
+    progress[f"tv:{tv_id}:{season}"] = start + len(episodes)
     store.update_state(tv_progress=progress)
     first, last = min(n for _s, n in numbers.values()), max(n for _s, n in numbers.values())
     return numbers, f"Season {season}, episodes {first}-{last}"

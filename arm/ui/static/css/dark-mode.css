@@ -56,7 +56,8 @@ html[data-theme="dark"] .bg-light {
   transition: background 0.3s linear, color 0.3s linear;
 }
 
-[data-theme="dark"] h1, h2, h3, h4, h5, h6 {
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
   color: #e0e0e0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
@@ -116,7 +117,7 @@ html[data-theme="dark"] .bg-light {
   background-color: #2e3236;
 }
 
-[data-theme="dark"] .table-bordered th, .table-bordered td {
+[data-theme="dark"] .table-bordered th, [data-theme="dark"] .table-bordered td {
   border: 1px solid #3a3f44;
 }
 
@@ -165,7 +166,8 @@ html[data-theme="dark"] .bg-light {
 }
 
 /* ---------- Misc ---------- */
-[data-theme="dark"] pre, code, kbd, samp {
+/* Every selector scoped: "[data-theme=dark] pre, code" made code dark in light mode too (C45) */
+[data-theme="dark"] pre, [data-theme="dark"] code, [data-theme="dark"] kbd, [data-theme="dark"] samp {
   background-color: #2e3236;
   color: #e0e0e0;
 }

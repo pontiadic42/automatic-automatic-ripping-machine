@@ -2,6 +2,9 @@
 Max width before this PARTICULAR table gets nasty
 This query will take effect for any screen smaller than 760px
 and also iPads specifically.
+
+Only ARM's own striped tables (job fields, tracks, history, logs) turn into stacked cards.
+A2RM's tables on the same pages (titles on the disc, the file editor) keep their columns (C45).
 */
 
 @media only screen and (max-width: 760px),
@@ -9,34 +12,35 @@ and also iPads specifically.
 (min-device-width: 768px) and (max-device-width: 1024px) {
 
     /* Force table to not be like tables anymore */
-    table, thead, tbody, th, td, tr {
+    table.table-striped, table.table-striped thead, table.table-striped tbody,
+    table.table-striped th, table.table-striped td, table.table-striped tr {
         display: block;
         /*padding: .75rem;*/
     }
 
-    caption {
+    table.table-striped caption {
         width: 100%;
         text-align: center;
     }
 
     /* Hide table headers (but not display: none;, for accessibility) */
-    thead tr {
+    table.table-striped thead tr {
         position: absolute;
         top: -9999px;
         left: -9999px;
     }
 
-    tr {
+    table.table-striped tr {
         border: 1px solid #ccc;
         margin-top: 5px;
         border-radius: 7px;
     }
 
-    th {
+    table.table-striped th {
         border-bottom: 1px solid #c5c6c8;
     }
 
-    td {
+    table.table-striped td {
         white-space: normal !important;
         /* Behave  like a "row" */
         border: none;
@@ -46,7 +50,7 @@ and also iPads specifically.
         padding-top: 3px;
     }
 
-    td:before {
+    table.table-striped td:before {
         /* Now like a table header */
         /* Top/left values mimic padding */
         top: 6px;

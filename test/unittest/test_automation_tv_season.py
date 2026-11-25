@@ -87,6 +87,17 @@ class TestEpisodeNaming(Temp):
         self.assertEqual(numbers, {})
         self.assertIn("doesn't say which season", message)
 
+    def test_chosen_season_without_first_episode_doesnt_guess_from_a_box_set_disc(self):
+        """C45: jobs 46/47 (D24, D25) got "Season 10 has no episode 116": the disc number counts across the set"""
+        numbers, message, _season = self.run_match("DR_WHO_COMPLETE_SERIES_2018_D24", (10, None))
+        self.assertEqual(numbers, {})
+        self.assertIn("Pick the first episode", message)
+        self.assertNotIn("116", message)
+
+    def test_chosen_season_with_season_in_the_label_still_uses_the_disc(self):
+        numbers, _message, _season = self.run_match("DOCTOR_WHO_S2_D2", (2, None))
+        self.assertEqual(numbers, {1: (2, 4), 2: (2, 5), 3: (2, 6)})
+
     def test_chosen_season_and_first_episode(self):
         """CHECK the user's season and first episode are used"""
         numbers, message, get_season = self.run_match("DR_WHO_COMPLETE_SERIES_2018_D23", (2, 4))

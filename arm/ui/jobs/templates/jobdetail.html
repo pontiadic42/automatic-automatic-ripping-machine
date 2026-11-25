@@ -115,7 +115,8 @@
                 {% with card_part = "files" %}{% include "automation_card.html" %}{% endwith %}
                 {% if editor %}
                     {% with item=editor.item, v=editor.v, files=editor.files, preview=editor.preview, others=editor.others,
-                            size_text=editor.size_text, error=editor.error, back=jobs.job_id %}
+                            size_text=editor.size_text, error=editor.error, editions=editor.editions,
+                            back=jobs.job_id %}
                         {% include "library_editor.html" %}
                     {% endwith %}
                 {% endif %}

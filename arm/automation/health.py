@@ -89,7 +89,9 @@ def check_file(path, decode=False):
 def library_files(root=None):
     root = root or str(cfg.arm_config.get("COMPLETED_PATH") or "")
     found = []
-    for folder, _dirs, files in os.walk(root):
+    for folder, dirs, files in os.walk(root):
+        # Hidden folders are skipped, the library trash (.a2rm-trash) among them (C45)
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
         for name in files:
             if name.lower().endswith(VIDEO) and not name.startswith("."):
                 found.append(os.path.join(folder, name))
